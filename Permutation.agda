@@ -48,44 +48,6 @@ permExtension : {{n : ℕ}} {x y : Perm} ->
 permExtension ex = permDetermined (extensional ex)
 -}
 
-inverseComposition : {{n : ℕ}} {A : Set}
-    (x : Mapping) (xi : Mapping) (xsur : ∀ (i : Fin n) → (x $ xi $ i) ≡ i)
-    (y : Mapping) (yi : Mapping) (ysur : ∀ (i : Fin n) → (y $ yi $ i) ≡ i)
-    -> ∀ (i : Fin n) → ((x ∘ y) $ (yi ∘ xi) $ i) ≡ i
-inverseComposition {{n}} x xi xsur y yi ysur i = eq15
-  where
-    Ex1 = x ∘ y $ yi ∘ xi $ i
-    Ex2 = x ∘ y $ yi $ xi $ i
-    Ex3 = x $ y $ yi $ xi $ i
-    Ex4 = x $          xi $ i
-    Ex5 =                   i
-
-    eq12 : Ex1 ≡ Ex2
-    eq12 = subst Eq12 eqex refl
-      where
-        Eq12 : Fin n -> Set
-        Eq12 ex = Ex1 ≡ (x ∘ y $ ex)
-        eqex : (yi ∘ xi $ i) ≡ (yi $ xi $ i)
-        eqex = compReduce {Mapping} {yi} {xi} {i}
-    eq23 : Ex2 ≡ Ex3
-    eq23 = compReduce {Mapping} {x} {y} {yi $ xi $ i}
-    eq34 : Ex3 ≡ Ex4
-    eq34 = subst Eq34 eqex refl
-      where
-        Eq34 : Fin n -> Set
-        Eq34 ex = Ex3 ≡ (x $ ex)
-        eqex : (y $ yi $ xi $ i) ≡ (xi $ i)
-        eqex = ysur (xi $ i)
-    eq45 : Ex4 ≡ Ex5
-    eq45 = xsur i
-
-    eq13 : Ex1 ≡ Ex3
-    eq13 = trans eq12 eq23
-    eq14 : Ex1 ≡ Ex4
-    eq14 = trans eq13 eq34
-    eq15 : Ex1 ≡ Ex5
-    eq15 = trans eq14 eq45
-
 instance
   functionalPerm : {{n : ℕ}} -> Functional Perm
   Functional.A (functionalPerm {{n}}) = Fin n
