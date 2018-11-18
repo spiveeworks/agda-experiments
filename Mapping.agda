@@ -1,3 +1,4 @@
+{-# OPTIONS --allow-unsolved-metas #-}
 module Mapping where
 
 open import Data.Nat using (ℕ)
@@ -26,6 +27,12 @@ Item {{Fun}} = Functional.A Fun
 
 IsLeftInverse : {MA : Set} {{Fun : Functional MA}} → (f g : MA) → Set
 IsLeftInverse {{Fun}} f g = ∀ (i : Item {{Fun}}) → (f $ g $ i) ≡ i
+
+funAssoc : {MA : Set} {{Fun : Functional MA}} → (f g h : MA) →
+    ∀ (i : Item {{Fun}}) → ((f ∘ g) ∘ h $ i) ≡ (f ∘ (g ∘ h) $ i)
+funAssoc f g h i = ?  -- make sure to abstract out the subst pattern
+                      -- used in the inverse theorem
+{-# WARNING_ON_USAGE funAssoc "remember to disable allow-unsolved-metas!" #-}
 
 -- IsRightInverse : {MA : Set} {{Fun : Functional MA}} → (f g : MA) → Set
 -- IsRightInverse f g = IsLeftInverse g f
@@ -78,9 +85,36 @@ inverseComposition {MA} {{Fun}} x xi xsur y yi ysur i = eq15
 Mapping : {{n : ℕ}} -> Set
 Mapping {{n}} = Vec (Fin n) n
 
+-- generalize to functor
+mapLaw : {A B : Set} {n : ℕ} (f : A -> B) (x : Vec A n) ->
+    ∀ (i : Fin n) -> lookup i (map f x) ≡ f (lookup i x)
+mapLaw {n = ℕ.zero} f x ()
+mapLaw {n = ℕ.suc m} f (x ∷ xs) (Fin.zero) = refl
+mapLaw {n = ℕ.suc m} f (x ∷ xs) (Fin.suc i) = mapLaw {n = m} f xs i
+
+instance
+  functionalMapping : {{n : ℕ}} -> Functional Mapping
+  Functional.A (functionalMapping {{n}}) = Fin n
+  Functional._$_ functionalMapping mapping i = lookup i mapping
+  Functional._∘_ functionalMapping snd fst = Vec.map (_$_ snd) fst
+  -- ((map (_$_ f) g) $ x) ≡ (f $ g $ x)
+  Functional.compReduce (functionalMapping {{n}}) {f} {g} {x} =
+      mapLaw (_$_ f) g x
+
+-- functor + functional + ident -> id {MA} = fmap f (id {A->A})
+-- btw _∘_ = λ f → fmap (f +_)
 fromFun : {{n : ℕ}} -> (Fin n -> Fin n) -> Mapping
 fromFun {{n}} f = Vec.map f (Vec.allFin n)
 
+id : {{n : ℕ}} -> Mapping
+id {{n}} = Vec.allFin n
+
+-- we're basically instantiating a monoid
+-- I'll probably switch to std one day??
+id-prop : {{n : ℕ}} → ∀ (i : Fin n) → (id $ i) ≡ i
+id-prop {{ℕ.zero}} ()
+id-prop {{ℕ.suc n}} Fin.zero = refl
+id-prop {{ℕ.suc n}} (Fin.suc i) = ?
 
 extensional : {A : Set} {n : ℕ} {x y : Vec A n} ->
     (∀ (i : Fin n) -> Vec.lookup i x ≡ Vec.lookup i y) -> x ≡ y
@@ -103,20 +137,4 @@ unextensional {A} {n} {x} {_} p i = PropEq.subst P p refl
   where
     P : Vec A n -> Set
     P y = Vec.lookup i x ≡ Vec.lookup i y
-
-
-mapLaw : {A B : Set} {n : ℕ} (f : A -> B) (x : Vec A n) ->
-    ∀ (i : Fin n) -> lookup i (map f x) ≡ f (lookup i x)
-mapLaw {n = ℕ.zero} f x ()
-mapLaw {n = ℕ.suc m} f (x ∷ xs) (Fin.zero) = refl
-mapLaw {n = ℕ.suc m} f (x ∷ xs) (Fin.suc i) = mapLaw {n = m} f xs i
-
-instance
-  functionalMapping : {{n : ℕ}} -> Functional Mapping
-  Functional.A (functionalMapping {{n}}) = Fin n
-  Functional._$_ functionalMapping mapping i = lookup i mapping
-  Functional._∘_ functionalMapping snd fst = Vec.map (_$_ snd) fst
-  -- ((map (_$_ f) g) $ x) ≡ (f $ g $ x)
-  Functional.compReduce (functionalMapping {{n}}) {f} {g} {x} =
-      mapLaw (_$_ f) g x
 

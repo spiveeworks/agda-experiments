@@ -1,4 +1,5 @@
 open import Mapping
+open import Cayley  -- should split this into Group and Cayley
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -15,7 +16,25 @@ record Perm {{n : ℕ}} : Set where
 
 open Perm
 
-{-
+instance
+  functionalPerm : {{n : ℕ}} -> Functional Perm
+  Functional.A (functionalPerm {{n}}) = Fin n
+  Functional._$_ functionalPerm perm i = image perm $ i
+  Functional._∘_ functionalPerm x y = result
+    where
+      result : Perm
+      image result = image x ∘ image y
+      preimage result = preimage y ∘ preimage x
+      surj result = inverseComposition
+          (image x) (preimage x) (surj x)
+          (image y) (preimage y) (surj y)
+      inj result = inverseComposition
+          (preimage y) (image y) (inj y)
+          (preimage x) (image x) (inj x)
+  Functional.compReduce functionalPerm {snd} {fst} {i} =
+      compReduce {Mapping} {image snd} {image fst} {i}
+
+
 preimageDetermined : {{n : ℕ}} {x y : Perm} ->
     image x ≡ image y -> preimage x ≡ preimage y
 preimageDetermined {x} {y} refl = extensional ?
@@ -44,27 +63,9 @@ permDetermined : {{n : ℕ}} {x y : Perm} ->
 permDetermined p = permEq p (preimageDetermined p)
 
 permExtension : {{n : ℕ}} {x y : Perm} ->
-    (∀ (i : Fin n) → (image x $ i) ≡ (image y $ i)) -> x ≡ y
+    (∀ (i : Fin n) → (x $ i) ≡ (y $ i)) -> x ≡ y
 permExtension ex = permDetermined (extensional ex)
--}
 
-instance
-  functionalPerm : {{n : ℕ}} -> Functional Perm
-  Functional.A (functionalPerm {{n}}) = Fin n
-  Functional._$_ functionalPerm perm i = image perm $ i
-  Functional._∘_ functionalPerm x y = result
-    where
-      result : Perm
-      image result = image x ∘ image y
-      preimage result = preimage y ∘ preimage x
-      surj result = inverseComposition
-          (image x) (preimage x) (surj x)
-          (image y) (preimage y) (surj y)
-      inj result = inverseComposition
-          (preimage y) (image y) (inj y)
-          (preimage x) (image x) (inj x)
-  Functional.compReduce functionalPerm {snd} {fst} {i} =
-      compReduce {Mapping} {image snd} {image fst} {i}
 
 invert : {{n : ℕ}} -> Perm -> Perm
 invert x = inverse
@@ -75,3 +76,20 @@ invert x = inverse
     surj inverse = inj x
     inj inverse = surj x
 
+idPerm : {{n : ℕ}} → Perm
+Perm.image idPerm = id
+Perm.preimage idPerm = id
+Perm.surj idPerm = {! permExtension; id-prop !}
+Perm.inj idPerm = ?
+
+instance
+  groupPerm : {{n : ℕ}} → Group Perm
+  _≟_ {{groupPerm}} = ?
+  _*_ {{groupPerm}} = _∘_
+  associative {{groupPerm}} a b c = {! permExtension (funAssoc {Perm} a b c) !}
+  ε {{groupPerm}} = idPerm
+  left-id {{groupPerm}} a = ?
+  right-id {{groupPerm}} a = ?
+  _⁻¹ {{groupPerm}} = invert
+  left-inverse {{groupPerm}} a = ?
+  right-inverse {{groupPerm}} a = ?
