@@ -33,10 +33,10 @@ fromFun : {{n : ℕ}} -> (Fin n -> Fin n) -> Mapping
 fromFun {{n}} f = Vec.map f (Vec.allFin n)
 
 
-extensional : {A : Set} (n : ℕ) (x y : Vec A n) ->
+extensional : {A : Set} {n : ℕ} {x y : Vec A n} ->
     (∀ (i : Fin n) -> Vec.lookup i x ≡ Vec.lookup i y) -> x ≡ y
-extensional ℕ.zero [] [] _ = refl
-extensional {A} (ℕ.suc n) (x ∷ xs) (y ∷ ys) eq = step eqh eqt
+extensional {A} {ℕ.zero} {[]} {[]} _ = refl
+extensional {A} {ℕ.suc n} {x ∷ xs} {y ∷ ys} eq = step eqh eqt
   where
     step : {x y : A} {xs ys : Vec A n} ->
         x ≡ y -> xs ≡ ys -> (x ∷ xs) ≡ (y ∷ ys)
@@ -46,7 +46,7 @@ extensional {A} (ℕ.suc n) (x ∷ xs) (y ∷ ys) eq = step eqh eqt
 
     eq' : ∀ (i : Fin n) -> Vec.lookup i xs ≡ Vec.lookup i ys
     eq' i = eq (Fin.suc i)
-    eqt = extensional n xs ys eq'
+    eqt = extensional eq'
 
 unextensional : {A : Set} {n : ℕ} {x y : Vec A n} ->
     x ≡ y -> ∀ (i : Fin n) -> Vec.lookup i x ≡ Vec.lookup i y
