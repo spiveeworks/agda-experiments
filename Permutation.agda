@@ -26,6 +26,13 @@ extensional {A} (ℕ.suc n) (x ∷ xs) (y ∷ ys) eq = step eqh eqt
     eq' i = eq (Fin.suc i)
     eqt = extensional n xs ys eq'
 
+unextensional : {A : Set} {n : ℕ} {x y : Vec A n} ->
+    x ≡ y -> ∀ (i : Fin n) -> Vec.lookup i x ≡ Vec.lookup i y
+unextensional {A} {n} {x} {_} p i = PropEq.subst P p refl
+  where
+    P : Vec A n -> Set
+    P y = Vec.lookup i x ≡ Vec.lookup i y
+
 record Functional (MA : Set) : Set1 where
   infixr 9 _∘_
   infixr -1 _$_
@@ -37,12 +44,20 @@ record Functional (MA : Set) : Set1 where
 
 open Functional {{...}} hiding (A)
 
+mapLaw : {A B : Set} {n : ℕ} (f : A -> B) (x : Vec A n) ->
+    ∀ (i : Fin n) -> lookup i (map f x) ≡ f (lookup i x)
+mapLaw {n = ℕ.zero} f x ()
+mapLaw {n = ℕ.suc m} f (x ∷ xs) (Fin.zero) = refl
+mapLaw {n = ℕ.suc m} f (x ∷ xs) (Fin.suc i) = mapLaw {n = m} f xs i
+
 instance
   functionalMapping : {{n : ℕ}} -> Functional Mapping
   Functional.A (functionalMapping {{n}}) = Fin n
-  Functional._$_ functionalMapping mapping i = Vec.lookup i mapping
+  Functional._$_ functionalMapping mapping i = lookup i mapping
   Functional._∘_ functionalMapping snd fst = Vec.map (_$_ snd) fst
-  Functional.compReduce functionalMapping {snd} {fst} {x} = ?
+  -- ((map (_$_ f) g) $ x) ≡ (f $ g $ x)
+  Functional.compReduce (functionalMapping {{n}}) {f} {g} {x} =
+      mapLaw (_$_ f) g x
 
 record Perm {{n : ℕ}} : Set where
   field
