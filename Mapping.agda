@@ -6,7 +6,7 @@ open import Data.Fin using (Fin)
 import Data.Vec as Vec
 open Vec
 open import Relation.Binary.PropositionalEquality
-    as PropEq using (_≡_; refl; subst; trans)
+open Relation.Binary.PropositionalEquality.≡-Reasoning
 
 ------------------------------------------------------------------------
 -- Functional class, properties (motivation below)
@@ -30,8 +30,7 @@ IsLeftInverse {{Fun}} f g = ∀ (i : Item {{Fun}}) → (f $ g $ i) ≡ i
 
 funAssoc : {MA : Set} {{Fun : Functional MA}} → (f g h : MA) →
     ∀ (i : Item {{Fun}}) → ((f ∘ g) ∘ h $ i) ≡ (f ∘ (g ∘ h) $ i)
-funAssoc f g h i = ?  -- make sure to abstract out the subst pattern
-                      -- used in the inverse theorem
+funAssoc f g h i = ?
 {-# WARNING_ON_USAGE funAssoc "remember to disable allow-unsolved-metas!" #-}
 
 -- IsRightInverse : {MA : Set} {{Fun : Functional MA}} → (f g : MA) → Set
@@ -41,40 +40,15 @@ inverseComposition : {MA : Set} {{Fun : Functional MA}}
     (x : MA) (xi : MA) (xsur : IsLeftInverse x xi)
     (y : MA) (yi : MA) (ysur : IsLeftInverse y yi)
     -> IsLeftInverse (x ∘ y) (yi ∘ xi)
-inverseComposition {MA} {{Fun}} x xi xsur y yi ysur i = eq15
+inverseComposition {MA} {{Fun}} x xi xsur y yi ysur i =
+    (x ∘ y $ yi ∘ xi $ i) ≡⟨ cong (λ ex → x ∘ y $ ex) (compReduce′ i) ⟩
+    (x ∘ y $ yi $ xi $ i) ≡⟨ compReduce′ (yi $ xi $ i) ⟩
+    (x $ y $ yi $ xi $ i) ≡⟨ cong (x $_) (ysur (xi $ i)) ⟩
+    (x $          xi $ i) ≡⟨ xsur i ⟩
+    (                  i) ∎
   where
-    -- since each of these equals the previous, the first should equal the last
-    Ex1 = x ∘ y $ yi ∘ xi $ i
-    Ex2 = x ∘ y $ yi $ xi $ i
-    Ex3 = x $ y $ yi $ xi $ i
-    Ex4 = x $          xi $ i
-    Ex5 =                   i
-
-    eq12 : Ex1 ≡ Ex2
-    eq12 = subst Eq12 eqex refl
-      where
-        Eq12 : Item {{Fun}} -> Set
-        Eq12 ex = Ex1 ≡ (x ∘ y $ ex)
-        eqex : (yi ∘ xi $ i) ≡ (yi $ xi $ i)
-        eqex = compReduce {{Fun}} {yi} {xi} {i}
-    eq23 : Ex2 ≡ Ex3
-    eq23 = compReduce {{Fun}} {x} {y} {yi $ xi $ i}
-    eq34 : Ex3 ≡ Ex4
-    eq34 = subst Eq34 eqex refl
-      where
-        Eq34 : Item {{Fun}} -> Set
-        Eq34 ex = Ex3 ≡ (x $ ex)
-        eqex : (y $ yi $ xi $ i) ≡ (xi $ i)
-        eqex = ysur (xi $ i)
-    eq45 : Ex4 ≡ Ex5
-    eq45 = xsur i
-
-    eq13 : Ex1 ≡ Ex3
-    eq13 = trans eq12 eq23
-    eq14 : Ex1 ≡ Ex4
-    eq14 = trans eq13 eq34
-    eq15 : Ex1 ≡ Ex5
-    eq15 = trans eq14 eq45
+    compReduce′ : {x y : MA} (i : Item {{Fun}}) → (x ∘ y $ i) ≡ (x $ y $ i)
+    compReduce′ {x} {y} i = compReduce {{Fun}} {x} {y} {i}
 
 
 ------------------------------------------------------------------------
@@ -133,8 +107,5 @@ extensional {A} {ℕ.suc n} {x ∷ xs} {y ∷ ys} eq = step eqh eqt
 
 unextensional : {A : Set} {n : ℕ} {x y : Vec A n} ->
     x ≡ y -> ∀ (i : Fin n) -> Vec.lookup i x ≡ Vec.lookup i y
-unextensional {A} {n} {x} {_} p i = PropEq.subst P p refl
-  where
-    P : Vec A n -> Set
-    P y = Vec.lookup i x ≡ Vec.lookup i y
+unextensional {A} {n} {x} {_} p i = cong (Vec.lookup i) p
 
