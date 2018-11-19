@@ -1,10 +1,10 @@
-{-# OPTIONS --allow-unsolved-metas #-}
 module Mapping where
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 import Data.Vec as Vec
 open Vec
+import Function
 open import Relation.Binary.PropositionalEquality
 open Relation.Binary.PropositionalEquality.≡-Reasoning
 
@@ -18,7 +18,7 @@ record Functional (MA : Set) : Set1 where
     A : Set
     _$_ : MA -> A -> A
     _∘_ : MA -> MA -> MA
-    compReduce : ∀ {f g : MA} {x : A} -> (f ∘ g $ x) ≡ (f $ g $ x)
+    compReduce : ∀ {f g : MA} (x : A) -> (f ∘ g $ x) ≡ (f $ g $ x)
 
 open Functional {{...}} public hiding (A)
 
@@ -30,8 +30,21 @@ IsLeftInverse {{Fun}} f g = ∀ (i : Item {{Fun}}) → (f $ g $ i) ≡ i
 
 funAssoc : {MA : Set} {{Fun : Functional MA}} → (f g h : MA) →
     ∀ (i : Item {{Fun}}) → ((f ∘ g) ∘ h $ i) ≡ (f ∘ (g ∘ h) $ i)
-funAssoc f g h i = ?
-{-# WARNING_ON_USAGE funAssoc "remember to disable allow-unsolved-metas!" #-}
+funAssoc {MA} {{Fun}} f g h i =
+    ((f ∘  g) ∘ h  $ i) ≡⟨ reduceLHS ⟩
+    ( f $  g  $ h  $ i) ≡⟨ sym reduceRHS ⟩
+    ( f ∘ (g  ∘ h) $ i) ∎
+  where
+    compReduce′ : {f g : MA} (i : Item {{Fun}}) → (f ∘ g $ i) ≡ (f $ g $ i)
+    compReduce′ = compReduce {{Fun}}
+    reduceLHS =
+        ((f ∘ g) ∘ h $ i) ≡⟨ compReduce′ i ⟩
+        ((f ∘ g) $ h $ i) ≡⟨ compReduce′ (h $ i) ⟩
+        ( f $ g  $ h $ i) ∎
+    reduceRHS =
+        (f ∘ (g ∘ h) $ i) ≡⟨ compReduce′ i ⟩
+        (f $ (g ∘ h) $ i) ≡⟨ cong (f $_) (compReduce′ i) ⟩
+        (f $  g $ h  $ i) ∎
 
 -- IsRightInverse : {MA : Set} {{Fun : Functional MA}} → (f g : MA) → Set
 -- IsRightInverse f g = IsLeftInverse g f
@@ -48,7 +61,7 @@ inverseComposition {MA} {{Fun}} x xi xsur y yi ysur i =
     (                  i) ∎
   where
     compReduce′ : {x y : MA} (i : Item {{Fun}}) → (x ∘ y $ i) ≡ (x $ y $ i)
-    compReduce′ {x} {y} i = compReduce {{Fun}} {x} {y} {i}
+    compReduce′ = compReduce {{Fun}}
 
 
 ------------------------------------------------------------------------
@@ -72,23 +85,30 @@ instance
   Functional._$_ functionalMapping mapping i = lookup i mapping
   Functional._∘_ functionalMapping snd fst = Vec.map (_$_ snd) fst
   -- ((map (_$_ f) g) $ x) ≡ (f $ g $ x)
-  Functional.compReduce (functionalMapping {{n}}) {f} {g} {x} =
+  Functional.compReduce (functionalMapping {{n}}) {f} {g} x =
       mapLaw (_$_ f) g x
 
 -- functor + functional + ident -> id {MA} = fmap f (id {A->A})
 -- btw _∘_ = λ f → fmap (f +_)
 fromFun : {{n : ℕ}} -> (Fin n -> Fin n) -> Mapping
-fromFun {{n}} f = Vec.map f (Vec.allFin n)
+fromFun = tabulate
 
 id : {{n : ℕ}} -> Mapping
 id {{n}} = Vec.allFin n
 
+tabulate-prop : {n : ℕ} {A : Set} (f : Fin n → A) →
+    ∀ (i : Fin n) → lookup i (tabulate f) ≡ f i
+tabulate-prop {ℕ.zero} _ ()
+tabulate-prop f Fin.zero = refl
+tabulate-prop {ℕ.suc n} f (Fin.suc i) = tabulate-prop f′ i
+  where
+    f′ : Fin n → _
+    f′ i′ = f (Fin.suc i′)
+
 -- we're basically instantiating a monoid
 -- I'll probably switch to std one day??
 id-prop : {{n : ℕ}} → ∀ (i : Fin n) → (id $ i) ≡ i
-id-prop {{ℕ.zero}} ()
-id-prop {{ℕ.suc n}} Fin.zero = refl
-id-prop {{ℕ.suc n}} (Fin.suc i) = ?
+id-prop = tabulate-prop Function.id
 
 extensional : {A : Set} {n : ℕ} {x y : Vec A n} ->
     (∀ (i : Fin n) -> Vec.lookup i x ≡ Vec.lookup i y) -> x ≡ y

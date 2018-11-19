@@ -31,8 +31,8 @@ instance
       inj result = inverseComposition
           (preimage y) (image y) (inj y)
           (preimage x) (image x) (inj x)
-  Functional.compReduce functionalPerm {snd} {fst} {i} =
-      compReduce {Mapping} {image snd} {image fst} {i}
+  Functional.compReduce functionalPerm {snd} {fst} =
+      compReduce {Mapping} {image snd} {image fst}
 
 
 preimageDetermined : {{n : ℕ}} {x y : Perm} ->
