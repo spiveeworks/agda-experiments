@@ -22,6 +22,15 @@ record Functional (MA : Set) : Set1 where
 
 open Functional {{...}} public hiding (A)
 
+instance
+  function : {A : Set} → Functional (A → A)
+  function {A} = record
+    { A = A
+    ; _$_ = Function._$_
+    ; _∘_ = Function._∘′_
+    ; compReduce = λ x → refl
+    }
+
 Item : {MA : Set} {{Fun : Functional MA}} → Set
 Item {{Fun}} = Functional.A Fun
 
