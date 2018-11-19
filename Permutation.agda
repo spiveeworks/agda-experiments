@@ -6,6 +6,7 @@ open import Data.Fin using (Fin)
 import Data.Vec as Vec
 open Vec
 open import Relation.Binary.PropositionalEquality
+open Relation.Binary.PropositionalEquality.≡-Reasoning
 
 record Perm {{n : ℕ}} : Set where
   field
@@ -37,7 +38,16 @@ instance
 
 preimageDetermined : {{n : ℕ}} {x y : Perm} ->
     image x ≡ image y -> preimage x ≡ preimage y
-preimageDetermined {x} {y} refl = extensional ?
+preimageDetermined {{n}} {x} {y} refl = extensional proof
+  where
+    proof : ∀ (i : Fin n) → (preimage x $ i) ≡ (preimage y $ i)
+    proof i =
+        (preimage x $ i) ≡⟨ inj y ⟩
+        (preimage y $ image y $ preimage x $ i)
+            ≡⟨ ? ⟩
+        (preimage y $ image x $ preimage x $ i)
+            ≡⟨ cong (preimage y $_) (surj x) ⟩
+        (preimage y $ i) ∎
 {-
 x.surj : x.image $ x.preimage $ i = i
 but x.image = y.image so
