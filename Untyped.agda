@@ -27,6 +27,8 @@ choose k = OpenTerm.Lambda (choose′ k Fin.zero) where
   choose′ ℕ.zero i = OpenTerm.Var i
   choose′ (ℕ.suc n) i = OpenTerm.Lambda (choose′ n (Fin.suc i))
 
+resp+-suc : (F : ℕ → Set) → (n m : ℕ) → F (n + ℕ.suc m) → F (ℕ.suc n + m)
+resp+-suc F n m = PropEq.subst F (+-suc n m)
 
 -- tuple 2 = λ x y f . f x y
 -- λλλ$($02)1
@@ -34,9 +36,8 @@ choose k = OpenTerm.Lambda (choose′ k Fin.zero) where
 tuple : {n : ℕ} → ℕ → OpenTerm n
 tuple {n} k = intros (ℕ.suc k) body where
   intros : {n′ : ℕ} (m : ℕ) → OpenTerm (n′ + m) → OpenTerm n′
-  intros {n′} (ℕ.suc m) x = OpenTerm.Lambda (intros m (resp x)) where
-    resp : OpenTerm (n′ + ℕ.suc m) → OpenTerm (ℕ.suc n′ + m)
-    resp = PropEq.subst OpenTerm (+-suc n′ m)
+  intros {n′} (ℕ.suc m) x = OpenTerm.Lambda
+    (intros m (resp+-suc OpenTerm n′ m x))
   intros {n′} ℕ.zero x = resp x where
     resp : OpenTerm (n′ + ℕ.zero) → OpenTerm n′
     resp = PropEq.subst OpenTerm (+-comm n′ ℕ.zero)
