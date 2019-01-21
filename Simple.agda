@@ -23,11 +23,15 @@ data OpenDerivation {ps ts : ℕ} (pts : Vec (Type ts) ps) : OpenTerm ps → Typ
 _i:_ : {n : ℕ} → Term → Type n → Set
 x i: t = OpenDerivation Vec.[] x t
 
+record ofType {n : ℕ} (ty : Type n) : Set where
+  val : Untyped.Term
+  proof : val i: ty
+
 a : {n : ℕ} → Type (ℕ.suc n)
 a = Type.Var Fin.zero
 
 chBool : Type 1
 chBool = a Type.i-> (a Type.i-> a)
 
-toBool : (term : Term) (proof : term i: chBool) → Bool
-toBool t p = ?
+toBool : ofType chBool → Bool
+toBool b = ?

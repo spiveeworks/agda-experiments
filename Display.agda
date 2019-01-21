@@ -7,6 +7,8 @@ open import Function using (_∘_)
 open import Relation.Nullary using (Dec)
 
 import Untyped
+import Church
+import EqProps
 
 data OpenTerm (n : ℕ) : Set where
   Apply : OpenTerm n → OpenTerm n → OpenTerm n
@@ -32,14 +34,14 @@ toUntyped (Apply x y) =
 toUntyped (Lambda m) = Untyped.OpenTerm.Lambda (toUntyped m)
 toUntyped (Var i) = Untyped.OpenTerm.Var i
 
-toUntyped (repeat k) = Untyped.repeat k
-toUntyped (choose k) = Untyped.choose k
-toUntyped (tuple k) = Untyped.tuple k
-toUntyped (inj n k) = ? -- Untyped.inj n k
+toUntyped (repeat k) = Church.repeat k
+toUntyped (choose k) = Church.choose k
+toUntyped (tuple k) = Church.tuple k
+toUntyped (inj n k) = ? -- Church.inj n k
 
 resp+-suc : (n m : ℕ) → OpenTerm (n Data.Nat.+ ℕ.suc m) →
   OpenTerm (ℕ.suc n Data.Nat.+ m)
-resp+-suc = Untyped.resp+-suc OpenTerm
+resp+-suc = EqProps.resp+-suc OpenTerm
 
 raise : (n k : ℕ) → OpenTerm n → OpenTerm (k Data.Nat.+ n)
 raise n k (Apply f x) = Apply (raise n k f) (raise n k x)
