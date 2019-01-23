@@ -4,8 +4,6 @@ open import Data.List as List using (List; _∷_; [])
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality as PropEq using (_≡_)
 
-open import Function using (case_of_)
-
 open import EqProps
 
 data OpenTerm (n : ℕ) : Set where
