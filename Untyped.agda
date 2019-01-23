@@ -1,5 +1,7 @@
 open import Data.Nat as Nat using (ℕ; _+_)
 open import Data.Fin as Fin using (Fin; toℕ)
+open import Data.List as List using (List; _∷_; [])
+open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality as PropEq using (_≡_)
 
 open import Function using (case_of_)
@@ -15,13 +17,11 @@ Term : Set
 Term = OpenTerm ℕ.zero
 
 raiseinj : (orig depth ignore : ℕ) →
-  Fin (ignore + orig) → Fin (depth + (ignore + orig))
+  Fin (ignore + orig) → Fin (ignore + depth + orig)
 raiseinj orig depth Nat.zero v = Fin.raise depth v
-raiseinj orig depth (Nat.suc ignore) Fin.zero =
-  resp+-suc′ Fin depth (ignore + orig) Fin.zero
+raiseinj orig depth (Nat.suc ignore) Fin.zero = Fin.zero
 raiseinj orig depth (Nat.suc ignore) (Fin.suc v) =
-  resp+-suc′ Fin depth (ignore + orig) result where
-    result = Fin.suc (raiseinj orig depth ignore v)
+  Fin.suc (raiseinj orig depth ignore v)
 
 -- x is defined with v₀..v_n, but we want these to be labelled v_i..v_n+i
 -- with new variables fitting from 0 to i-1
@@ -30,10 +30,10 @@ raiseinj orig depth (Nat.suc ignore) (Fin.suc v) =
 -- with new variables fitting from j to i+j-1
 -- note its orig + depth simply because orig is 0 anyway
 raise : {orig : ℕ} (depth ignore : ℕ) →
-  OpenTerm (ignore + orig) → OpenTerm (ignore + orig + depth)
+  OpenTerm (ignore + orig) → OpenTerm (ignore + depth + orig)
 raise d ig (Apply f x) = Apply (raise d ig f) (raise d ig x)
 raise d ig (Lambda b) = Lambda (raise d (ℕ.suc ig) b)
-raise {orig} d ig (Var v) = Var (resp+-comm Fin d _ (raiseinj orig d ig v))
+raise {orig} d ig (Var v) = Var (raiseinj orig d ig v)
 
 data Ordering : Set where
   less : Ordering
@@ -50,12 +50,13 @@ compare (ℕ.suc x) (Fin.suc y) = compare x y
 -- which means v{i+j} needs to be renumbered as i+j-1
 -- i are variables added since starting subst, 'ex'
 -- n are variables originally in scope, 'orig'
-substvar : {ex : ℕ} → Fin (ℕ.suc ex) → OpenTerm 0 → OpenTerm ex
-substvar {ex@0} Fin.zero val = raise ex 0 val
-substvar {0} (Fin.suc ()) val
-substvar {ex@(ℕ.suc ex′)} var val with compare ex var
+substvar : {ex orig : ℕ} → Fin (ℕ.suc (ex + orig)) → OpenTerm orig →
+  OpenTerm (ex + orig)
+substvar {ex@0} Fin.zero val = raise ex 0 val  -- explicit equals with ex=0
+substvar {0} (Fin.suc var) val = Var var  -- explicit less with ex=0
+substvar {ex@(ℕ.suc ex′)} {orig} var val with compare ex var
 ... | less = Var (pred var) where
-  pred : Fin (ℕ.suc ex) → Fin ex
+  pred : Fin (ℕ.suc (ex + orig)) → Fin (ex + orig)
   pred Fin.zero = Fin.zero
   pred (Fin.suc x) = x
 ... | equal = raise ex 0 val
@@ -71,7 +72,8 @@ substvar {ex@(ℕ.suc ex′)} var val with compare ex var
 -- b is defined in the context of a variable v₀ : t₁, and is already of type t₂
 -- our goal is to replace any `v₀ : t₁ |- F(v₀) : t₃' with
 --  `x : t₁ |- F(x) : t₃'
-subst : {ex : ℕ} → OpenTerm (ℕ.suc ex) → OpenTerm 0 → OpenTerm ex
+subst : {orig ex : ℕ} → OpenTerm (ℕ.suc (ex + orig)) → OpenTerm orig →
+  OpenTerm (ex + orig)
 subst (Apply f x) val = Apply (subst f val) (subst x val)
 -- a variable is prepended to the context, so i goes up by one
 -- meaning we now want to replace v_{i+1} with x instead of v_i
@@ -85,8 +87,7 @@ whnf (Apply f term) = whnf (subst (whnf f) term)
 whnf (Lambda term) = term
 whnf (Var ())
 
-
-module Tests where
+module whnfTests where
   open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
   id : {n : ℕ} → OpenTerm n
@@ -103,4 +104,31 @@ module Tests where
 
   testThree : whnf (OpenTerm.Apply const id) ≡ id
   testThree = refl
+
+record HeadNormal : Set where
+  constructor HNF
+  field
+    vars : ℕ
+    head : Fin vars
+    tail : List (OpenTerm vars)
+
+buildBody : (x : HeadNormal) → OpenTerm (HeadNormal.vars x)
+buildBody (HNF vars head tail) = List.foldl Apply (Var head) tail
+
+wrapLambdas : {n : ℕ} → OpenTerm n → OpenTerm 0
+wrapLambdas {0} x = x
+wrapLambdas {ℕ.suc _} x = wrapLambdas (Lambda x)
+
+fromHeadNormal : HeadNormal → OpenTerm 0
+fromHeadNormal = wrapLambdas ∘ buildBody
+
+
+{-# TERMINATING #-}
+hnf : {vars : ℕ} → OpenTerm vars → List (OpenTerm vars) → HeadNormal
+hnf (Lambda b) (x List.∷ xs) = hnf (subst b x) xs
+hnf (Lambda b) [] = hnf b []
+hnf (Apply f x) xs = hnf f (x List.∷ xs)
+hnf {vars} (Var head) tail = HNF vars head tail
+
+
 
