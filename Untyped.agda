@@ -1,5 +1,6 @@
 open import Data.Nat as Nat using (ℕ; _+_)
 open import Data.Fin as Fin using (Fin; toℕ)
+open import Data.Vec as Vec using (Vec)
 open import Data.List as List using (List; _∷_; [])
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality as PropEq using (_≡_)
@@ -44,25 +45,11 @@ compare 0 Fin.zero = equal
 compare (ℕ.suc x) Fin.zero = greater
 compare (ℕ.suc x) (Fin.suc y) = compare x y
 
--- [v₀,v₁..vi..v{n+i}] => [v₀..v{i-1},v{i+1}..v{n+i}]
--- which means v{i+j} needs to be renumbered as i+j-1
--- i are variables added since starting subst, 'ex'
--- n are variables originally in scope, 'orig'
-substvar : {ex orig : ℕ} → Fin (ℕ.suc (ex + orig)) → OpenTerm orig →
-  OpenTerm (ex + orig)
-substvar {ex@0} Fin.zero val = raise ex 0 val  -- explicit equals with ex=0
-substvar {0} (Fin.suc var) val = Var var  -- explicit less with ex=0
-substvar {ex@(ℕ.suc ex′)} {orig} var val with compare ex var
-... | less = Var (pred var) where
-  pred : Fin (ℕ.suc (ex + orig)) → Fin (ex + orig)
-  pred Fin.zero = Fin.zero
-  pred (Fin.suc x) = x
-... | equal = raise ex 0 val
-... | greater = Var (reduce var) where
-  reduce : {n : ℕ} → Fin (ℕ.suc (ℕ.suc n)) → Fin (ℕ.suc n)
-  reduce Fin.zero = Fin.zero
-  reduce {0} (Fin.suc _) = Fin.zero
-  reduce {ℕ.suc n} (Fin.suc x) = Fin.suc (reduce x)
+substvars : {ex orig : ℕ} → OpenTerm orig →
+  Vec (OpenTerm (ex + orig)) (ℕ.suc (ex + orig))
+substvars {ex} {orig} val =
+  Vec.take ex vars <++ raise ex 0 val ++> Vec.drop ex vars where
+    vars = Vec.map Var (Vec.allFin (ex + orig))
 
 -- use resp-subst to follow this algorithm
 -- i.e. think about why (Apply (Lambda b) x) has the same type as (subst b x)
@@ -76,7 +63,7 @@ subst (Apply f x) val = Apply (subst f val) (subst x val)
 -- a variable is prepended to the context, so i goes up by one
 -- meaning we now want to replace v_{i+1} with x instead of v_i
 subst (Lambda b) val = Lambda (subst b val)
-subst (Var v) val = substvar v val
+subst (Var v) val = Vec.lookup v (substvars val)
 
 
 {-# TERMINATING #-}

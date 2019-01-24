@@ -33,7 +33,17 @@ chBool : Type 1
 chBool = a Type.i-> (a Type.i-> a)
 
 toBool : (term : Term) (proof : term i: chBool) → Bool
-toBool t p = ?
+toBool t p = Bool.false
+
+resp-substvars : {ts eps ps : ℕ} → (valt : Type ts) →
+  (pts : Vec (Type ts) ps) → (epts : Vec (Type ts) eps) →
+  (val : OpenTerm ps) → OpenDerivation pts val valt →
+  ∀ (var : Fin (ℕ.suc (eps + ps))) →
+  OpenDerivation
+    (epts ++ pts)
+    (lookup var (substvars val))
+    (lookup var (epts <++ valt ++> pts))
+resp-substvars valt pts epts val valprf var = ?
 
 resp-subst : {ts eps ps : ℕ} → ∀(bt valt : Type ts) →
   (pts : Vec (Type ts) ps) → (epts : Vec (Type ts) eps) →
@@ -47,7 +57,8 @@ resp-subst bt valt pts epts (Apply f x) (Apply xt _ _ fprf _ xprf) val valprf =
     (subst x val) (resp-subst xt valt pts epts x xprf val valprf)
 resp-subst .(xt i-> bt) valt pts epts (Lambda b) (Lambda xt bt .b bprf) val valprf =
   Lambda xt bt (subst b val) (resp-subst bt valt pts (xt ∷ epts) b bprf val valprf) where
-resp-subst .(lookup v (epts <++ valt ++> pts)) valt pts epts (Var v) (Var .v) val valprf = {!   !}
+resp-subst .(lookup v (epts <++ valt ++> pts)) valt pts epts (Var v) (Var .v) val valprf =
+  resp-substvars valt pts epts val valprf v
 
 resp-subst′ : {ts ps : ℕ} → ∀(t : Type ts) → (b : OpenTerm (ℕ.suc ps)) →
   (x : OpenTerm ps) → (pts : Vec (Type ts) ps) →
