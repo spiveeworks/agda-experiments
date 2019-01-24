@@ -1,132 +1,58 @@
-open import Data.Nat as Nat using (ℕ; _+_)
-open import Data.Fin as Fin using (Fin; toℕ)
-open import Data.List as List using (List; _∷_; [])
-open import Function using (_∘_)
-open import Relation.Binary.PropositionalEquality as PropEq using (_≡_)
+open import Data.Nat using (ℕ; _+_)
+open import Data.Fin using (Fin)
+open import Data.Bool using (Bool)
+open import Data.Vec
 
-open import EqProps
+open import Untyped
 
-data OpenTerm (n : ℕ) : Set where
-  Apply : OpenTerm n → OpenTerm n → OpenTerm n
-  Lambda : OpenTerm (ℕ.suc n) → OpenTerm n
-  Var : Fin n → OpenTerm n
+open import EqProps using (_<++_++>_)
 
-Term : Set
-Term = OpenTerm ℕ.zero
+data Type (n : ℕ) : Set where
+  Var : Fin n → Type n
+  _i->_ : Type n → Type n → Type n
 
-raiseinj : (orig depth ignore : ℕ) →
-  Fin (ignore + orig) → Fin (ignore + depth + orig)
-raiseinj orig depth Nat.zero v = Fin.raise depth v
-raiseinj orig depth (Nat.suc ignore) Fin.zero = Fin.zero
-raiseinj orig depth (Nat.suc ignore) (Fin.suc v) =
-  Fin.suc (raiseinj orig depth ignore v)
+data OpenDerivation {ps ts : ℕ} (pts : Vec (Type ts) ps) : OpenTerm ps → Type
+    ts → Set where
+  Apply : ∀ (xt ot : Type ts) →
+    (f : OpenTerm ps) (fd : OpenDerivation pts f (xt Type.i-> ot)) →
+    (x : OpenTerm ps) (xd : OpenDerivation pts x xt) →
+    OpenDerivation pts (OpenTerm.Apply f x) ot
+  Lambda : ∀ (xt ot : Type ts) →
+    (b : OpenTerm (ℕ.suc ps)) (bd : OpenDerivation (xt ∷ pts) b ot) →
+    OpenDerivation pts (OpenTerm.Lambda b) (xt Type.i-> ot)
+  Var : ∀ (var : Fin ps) →
+    OpenDerivation pts (OpenTerm.Var var) (lookup var pts)
 
--- x is defined with v₀..v_n, but we want these to be labelled v_i..v_n+i
--- with new variables fitting from 0 to i-1
--- additionally inside lambdas we will have v₀..v_j-1, v_j..v_n+j
--- which we want to be called v₀..v_j-1, v_i+j..v_n+i+j
--- with new variables fitting from j to i+j-1
--- note its orig + depth simply because orig is 0 anyway
-raise : {orig : ℕ} (depth ignore : ℕ) →
-  OpenTerm (ignore + orig) → OpenTerm (ignore + depth + orig)
-raise d ig (Apply f x) = Apply (raise d ig f) (raise d ig x)
-raise d ig (Lambda b) = Lambda (raise d (ℕ.suc ig) b)
-raise {orig} d ig (Var v) = Var (raiseinj orig d ig v)
+_i:_ : {n : ℕ} → Term → Type n → Set
+x i: t = OpenDerivation Vec.[] x t
 
-data Ordering : Set where
-  less : Ordering
-  equal : Ordering
-  greater : Ordering
+a : {n : ℕ} → Type (ℕ.suc n)
+a = Type.Var Fin.zero
 
-compare : {n : ℕ} → ℕ → Fin n → Ordering
-compare 0 (Fin.suc y) = less
-compare 0 Fin.zero = equal
-compare (ℕ.suc x) Fin.zero = greater
-compare (ℕ.suc x) (Fin.suc y) = compare x y
+chBool : Type 1
+chBool = a Type.i-> (a Type.i-> a)
 
--- [v₀,v₁..vi..v{n+i}] => [v₀..v{i-1},v{i+1}..v{n+i}]
--- which means v{i+j} needs to be renumbered as i+j-1
--- i are variables added since starting subst, 'ex'
--- n are variables originally in scope, 'orig'
-substvar : {ex orig : ℕ} → Fin (ℕ.suc (ex + orig)) → OpenTerm orig →
-  OpenTerm (ex + orig)
-substvar {ex@0} Fin.zero val = raise ex 0 val  -- explicit equals with ex=0
-substvar {0} (Fin.suc var) val = Var var  -- explicit less with ex=0
-substvar {ex@(ℕ.suc ex′)} {orig} var val with compare ex var
-... | less = Var (pred var) where
-  pred : Fin (ℕ.suc (ex + orig)) → Fin (ex + orig)
-  pred Fin.zero = Fin.zero
-  pred (Fin.suc x) = x
-... | equal = raise ex 0 val
-... | greater = Var (reduce var) where
-  reduce : {n : ℕ} → Fin (ℕ.suc (ℕ.suc n)) → Fin (ℕ.suc n)
-  reduce Fin.zero = Fin.zero
-  reduce {0} (Fin.suc _) = Fin.zero
-  reduce {ℕ.suc n} (Fin.suc x) = Fin.suc (reduce x)
+toBool : (term : Term) (proof : term i: chBool) → Bool
+toBool t p = ?
 
--- use resp-subst to follow this algorithm
--- i.e. think about why (Apply (Lambda b) x) has the same type as (subst b x)
--- the first thing is Lambda b : t₁ -> t₂, x : t₁, so subst b x : t₂
--- b is defined in the context of a variable v₀ : t₁, and is already of type t₂
--- our goal is to replace any `v₀ : t₁ |- F(v₀) : t₃' with
---  `x : t₁ |- F(x) : t₃'
-subst : {orig ex : ℕ} → OpenTerm (ℕ.suc (ex + orig)) → OpenTerm orig →
-  OpenTerm (ex + orig)
-subst (Apply f x) val = Apply (subst f val) (subst x val)
--- a variable is prepended to the context, so i goes up by one
--- meaning we now want to replace v_{i+1} with x instead of v_i
-subst (Lambda b) val = Lambda (subst b val)
-subst (Var v) val = substvar v val
+resp-subst : {ts eps ps : ℕ} → ∀(bt valt : Type ts) →
+  (pts : Vec (Type ts) ps) → (epts : Vec (Type ts) eps) →
+  (b : OpenTerm (ℕ.suc eps + ps)) → OpenDerivation (epts <++ valt ++> pts) b bt →
+  (val : OpenTerm ps) → OpenDerivation pts val valt →
+  OpenDerivation (epts ++ pts) (subst b val) bt
+-- thank you proof automation
+resp-subst bt valt pts epts (Apply f x) (Apply xt _ _ fprf _ xprf) val valprf =
+  Apply xt bt
+    (subst f val) (resp-subst (xt i-> bt) valt pts epts f fprf val valprf)
+    (subst x val) (resp-subst xt valt pts epts x xprf val valprf)
+resp-subst .(xt i-> bt) valt pts epts (Lambda b) (Lambda xt bt .b bprf) val valprf =
+  Lambda xt bt (subst b val) (resp-subst bt valt pts (xt ∷ epts) b bprf val valprf) where
+resp-subst .(lookup v (epts <++ valt ++> pts)) valt pts epts (Var v) (Var .v) val valprf = {!   !}
 
-
-{-# TERMINATING #-}
-whnf : Term → OpenTerm 1
-whnf (Apply f term) = whnf (subst (whnf f) term)
-whnf (Lambda term) = term
-whnf (Var ())
-
-module whnfTests where
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-
-  id : {n : ℕ} → OpenTerm n
-  id = OpenTerm.Lambda (OpenTerm.Var Fin.zero)
-
-  const : {n : ℕ} → OpenTerm n
-  const = OpenTerm.Lambda (OpenTerm.Lambda (OpenTerm.Var (Fin.suc Fin.zero)))
-
-  testOne : whnf (id) ≡ OpenTerm.Var Fin.zero
-  testOne = refl
-
-  testTwo : whnf (OpenTerm.Apply id id) ≡ OpenTerm.Var Fin.zero
-  testTwo = refl
-
-  testThree : whnf (OpenTerm.Apply const id) ≡ id
-  testThree = refl
-
-record HeadNormal : Set where
-  constructor HNF
-  field
-    vars : ℕ
-    head : Fin vars
-    tail : List (OpenTerm vars)
-
-buildBody : (x : HeadNormal) → OpenTerm (HeadNormal.vars x)
-buildBody (HNF vars head tail) = List.foldl Apply (Var head) tail
-
-wrapLambdas : {n : ℕ} → OpenTerm n → OpenTerm 0
-wrapLambdas {0} x = x
-wrapLambdas {ℕ.suc _} x = wrapLambdas (Lambda x)
-
-fromHeadNormal : HeadNormal → OpenTerm 0
-fromHeadNormal = wrapLambdas ∘ buildBody
-
-
-{-# TERMINATING #-}
-hnf : {vars : ℕ} → OpenTerm vars → List (OpenTerm vars) → HeadNormal
-hnf (Lambda b) (x List.∷ xs) = hnf (subst b x) xs
-hnf (Lambda b) [] = hnf b []
-hnf (Apply f x) xs = hnf f (x List.∷ xs)
-hnf {vars} (Var head) tail = HNF vars head tail
-
-
+resp-subst′ : {ts ps : ℕ} → ∀(t : Type ts) → (b : OpenTerm (ℕ.suc ps)) →
+  (x : OpenTerm ps) → (pts : Vec (Type ts) ps) →
+  OpenDerivation pts (Apply (Lambda b) x) t →
+  OpenDerivation pts (subst b x) t
+resp-subst′ t b x pts (Apply xt .t .(Lambda b) (Lambda .xt .t .b bprf) .x xprf)
+  = resp-subst t xt pts [] b bprf x xprf
 
