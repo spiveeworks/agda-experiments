@@ -1,7 +1,7 @@
 open import Data.Nat as Nat using (ℕ; _+_)
 open import Data.Fin as Fin using (Fin; toℕ)
-open import Data.Vec as Vec using (Vec)
-open import Data.List as List using (List; _∷_; [])
+open import Data.Vec as Vec using (Vec; _++_)
+open import Data.List as List using (List)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality as PropEq using (_≡_)
 
@@ -46,10 +46,12 @@ compare (ℕ.suc x) Fin.zero = greater
 compare (ℕ.suc x) (Fin.suc y) = compare x y
 
 substvars : {ex orig : ℕ} → OpenTerm orig →
-  Vec (OpenTerm (ex + orig)) (ℕ.suc (ex + orig))
-substvars {ex} {orig} val =
-  Vec.take ex vars <++ raise ex 0 val ++> Vec.drop ex vars where
-    vars = Vec.map Var (Vec.allFin (ex + orig))
+  Vec (OpenTerm (ex + orig)) (ex + ℕ.suc orig)
+substvars {ex} {orig} val = exvars ++ val′ Vec.∷ origvars where
+  vars = Vec.map Var (Vec.allFin (ex + orig))
+  exvars = Vec.take ex vars
+  origvars = Vec.drop ex vars where
+  val′ = raise ex 0 val
 
 -- use resp-subst to follow this algorithm
 -- i.e. think about why (Apply (Lambda b) x) has the same type as (subst b x)
@@ -57,7 +59,7 @@ substvars {ex} {orig} val =
 -- b is defined in the context of a variable v₀ : t₁, and is already of type t₂
 -- our goal is to replace any `v₀ : t₁ |- F(v₀) : t₃' with
 --  `x : t₁ |- F(x) : t₃'
-subst : {orig ex : ℕ} → OpenTerm (ℕ.suc (ex + orig)) → OpenTerm orig →
+subst : {orig ex : ℕ} → OpenTerm (ex + ℕ.suc orig) → OpenTerm orig →
   OpenTerm (ex + orig)
 subst (Apply f x) val = Apply (subst f val) (subst x val)
 -- a variable is prepended to the context, so i goes up by one
@@ -111,7 +113,7 @@ fromHeadNormal = wrapLambdas ∘ buildBody
 {-# TERMINATING #-}
 hnf : {vars : ℕ} → OpenTerm vars → List (OpenTerm vars) → HeadNormal
 hnf (Lambda b) (x List.∷ xs) = hnf (subst b x) xs
-hnf (Lambda b) [] = hnf b []
+hnf (Lambda b) List.[] = hnf b List.[]
 hnf (Apply f x) xs = hnf f (x List.∷ xs)
 hnf {vars} (Var head) tail = HNF vars head tail
 

@@ -5,8 +5,6 @@ open import Data.Vec
 
 open import Untyped
 
-open import EqProps using (_<++_++>_)
-
 data Type (n : ℕ) : Set where
   Var : Fin n → Type n
   _i->_ : Type n → Type n → Type n
@@ -38,16 +36,16 @@ toBool t p = Bool.false
 resp-substvars : {ts eps ps : ℕ} → (valt : Type ts) →
   (pts : Vec (Type ts) ps) → (epts : Vec (Type ts) eps) →
   (val : OpenTerm ps) → OpenDerivation pts val valt →
-  ∀ (var : Fin (ℕ.suc (eps + ps))) →
+  ∀ (var : Fin (eps + ℕ.suc ps)) →
   OpenDerivation
     (epts ++ pts)
     (lookup var (substvars val))
-    (lookup var (epts <++ valt ++> pts))
+    (lookup var (epts ++ valt ∷ pts))
 resp-substvars valt pts epts val valprf var = ?
 
 resp-subst : {ts eps ps : ℕ} → ∀(bt valt : Type ts) →
   (pts : Vec (Type ts) ps) → (epts : Vec (Type ts) eps) →
-  (b : OpenTerm (ℕ.suc eps + ps)) → OpenDerivation (epts <++ valt ++> pts) b bt →
+  (b : OpenTerm (eps + ℕ.suc ps)) → OpenDerivation (epts ++ valt ∷ pts) b bt →
   (val : OpenTerm ps) → OpenDerivation pts val valt →
   OpenDerivation (epts ++ pts) (subst b val) bt
 -- thank you proof automation
@@ -57,7 +55,7 @@ resp-subst bt valt pts epts (Apply f x) (Apply xt _ _ fprf _ xprf) val valprf =
     (subst x val) (resp-subst xt valt pts epts x xprf val valprf)
 resp-subst .(xt i-> bt) valt pts epts (Lambda b) (Lambda xt bt .b bprf) val valprf =
   Lambda xt bt (subst b val) (resp-subst bt valt pts (xt ∷ epts) b bprf val valprf) where
-resp-subst .(lookup v (epts <++ valt ++> pts)) valt pts epts (Var v) (Var .v) val valprf =
+resp-subst .(lookup v (epts ++ valt ∷ pts)) valt pts epts (Var v) (Var .v) val valprf =
   resp-substvars valt pts epts val valprf v
 
 resp-subst′ : {ts ps : ℕ} → ∀(t : Type ts) → (b : OpenTerm (ℕ.suc ps)) →
