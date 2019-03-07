@@ -4,6 +4,8 @@ open import Data.Bool as Bool using (Bool)
 open import Relation.Binary.PropositionalEquality as PropEq using (_≡_)
 open import Data.Product as Product using (∃-syntax)
 
+open import Even using (Even)
+
 -- simple digraph with loops
 Digraph : (ord : ℕ) → Set
 Digraph ord = Fin ord → Fin ord → Bool
@@ -38,12 +40,12 @@ record Cycle {ord : ℕ} (g : Digraph ord) (length : ℕ) : Set where
     walk : Walk g length
     is-closed : IsClosed walk
 
-NoOddCycles : {ord : ℕ} → Digraph ord → Set
-NoOddCycles g = {length : ℕ} → Cycle g length → ∃[ n ] (length ≡ n * 2)
+EvenCycles : {ord : ℕ} → Digraph ord → Set
+EvenCycles g = {length : ℕ} → Cycle g length → Even length
 
-theorem₁ : {ord : ℕ} → (g : Digraph ord) → Coloring 2 g → NoOddCycles g
+theorem₁ : {ord : ℕ} → (g : Digraph ord) → Coloring 2 g → EvenCycles g
 theorem₁ g coloring cycle = ?
 
-theorem₂ : {ord : ℕ} → (g : Digraph ord) → NoOddCycles g → Coloring 2 g
-theorem₂ g no-odd-cycles = ?
+theorem₂ : {ord : ℕ} → (g : Digraph ord) → EvenCycles g → Coloring 2 g
+theorem₂ g even-cycles = ?
 
