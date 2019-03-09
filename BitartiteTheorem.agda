@@ -13,6 +13,8 @@ open Coloring using (map)
 EvenCycles : {ord : ℕ} → Digraph ord → Set
 EvenCycles g = {length : ℕ} → Cycle g length → Even length
 
+{- Color propositions for Evenness theorem -}
+
 swap : Fin 2 → Fin 2
 swap Fin.zero = Fin.suc Fin.zero
 swap (Fin.suc Fin.zero) = Fin.zero
@@ -71,6 +73,8 @@ color-step g c x y z x~y y~z =
     open PropEq
     open ≡-Reasoning
 
+{- Evenness theorem -}
+
 lemma-step : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
   {length : ℕ} → ∀ (walk : Walk g (2 + length)) →
   map c (beginning walk)
@@ -119,12 +123,33 @@ theorem₁ g c {length} cycle with Even.decide length
 ... | odd prf = ⊥-elim (lemma-odd′ g c (Cycle.walk cycle) prf eq-ends)
   where eq-ends = PropEq.cong (map c) (Cycle.is-closed cycle)
 
+{- Color propositions for Coloring theorem -}
+
+color-by-number : ℕ → Fin 2
+color-by-number x with Even.decide x
+... | even _ = Fin.zero
+... | odd _ = Fin.suc Fin.zero
+
+{- Coloring theorem -}
+
 
 theorem₂ : {ord : ℕ} → (g : Digraph ord) →
   IsGraph g → IsConnected g → EvenCycles g →
   Coloring 2 g
-theorem₂ g sym walks even-cycles = coloring where
+theorem₂ {ℕ.zero} _ _ _ _ = record { map = λ () ; contact = λ () }
+theorem₂ {ℕ.suc _} g sym walks even-cycles = coloring where
+  open _connected-to_within_
   coloring : Coloring 2 g
-  Coloring.map coloring x = ?
-  Coloring.contact coloring x y ceq = ?
+  Coloring.map coloring x = color-by-number (dist (walks (Fin.zero) x))
+  Coloring.contact coloring x y ceq with g x y
+  ... | Bool.false = refl
+  ... | Bool.true = ⊥-elim (Even.contradict ? ? ?) where
+    xc = walks Fin.zero x
+    yc = walks Fin.zero y
+    xl = dist xc
+    yl = dist yc
+    xw = walk xc
+    yw = walk yc
+    mw = ? x y refl  -- singleton walk
+    loop = ?
 
