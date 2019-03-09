@@ -120,6 +120,11 @@ theorem₁ g c {length} cycle with Even.decide length
   where eq-ends = PropEq.cong (map c) (Cycle.is-closed cycle)
 
 
-theorem₂ : {ord : ℕ} → (g : Digraph ord) → EvenCycles g → Coloring 2 g
-theorem₂ g even-cycles = ?
+theorem₂ : {ord : ℕ} → (g : Digraph ord) →
+  IsGraph g → IsConnected g → EvenCycles g →
+  Coloring 2 g
+theorem₂ g sym walks even-cycles = coloring where
+  coloring : Coloring 2 g
+  Coloring.map coloring x = ?
+  Coloring.contact coloring x y ceq = ?
 
