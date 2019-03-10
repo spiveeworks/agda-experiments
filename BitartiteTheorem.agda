@@ -3,6 +3,7 @@ open import Data.Empty
 open import Data.Fin as Fin using (Fin)
 open import Data.Bool as Bool using (Bool)
 open import Data.Product using (_,_)
+open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality as PropEq using (_≡_; refl)
 
 open import Graph
@@ -132,24 +133,35 @@ color-by-number x with Even.decide x
 
 {- Coloring theorem -}
 
+open _connected-to_within_ using (dist)
+
+-- test if distance from zero is even, color by evenness
+coloring-map : {ord : ℕ} (g : Digraph ord) → IsConnected g → Fin ord → Fin 2
+coloring-map {ℕ.zero} g walks = λ ()
+coloring-map {ℕ.suc _} g walks = color-by-number ∘ dist ∘ walks (Fin.zero)
+
+coloring-contact : {ord : ℕ} (g : Digraph ord) →
+  (walks : IsConnected g) → EvenCycles g →
+  (x y : Fin ord) → coloring-map g walks x ≡ coloring-map g walks y →
+  g x y ≡ Bool.true → ⊥
+coloring-contact {ℕ.zero} g walks even-cycles ()
+coloring-contact {ℕ.suc _} g walks even-cycles x y ceq edge =
+  Even.contradict _ even-proof odd-proof where
+    xc = walks Fin.zero x
+    yc = walks y Fin.zero
+    mw = fromEdge x y edge
+    loopc = xc ++′ (mw ++′ yc)
+    loop = fromConnected Fin.zero loopc
+    even-proof = even-cycles loop
+    odd-proof = ?
 
 theorem₂ : {ord : ℕ} → (g : Digraph ord) →
-  IsGraph g → IsConnected g → EvenCycles g →
-  Coloring 2 g
-theorem₂ {ℕ.zero} _ _ _ _ = record { map = λ () ; contact = λ () }
-theorem₂ {ℕ.suc _} g sym walks even-cycles = coloring where
-  open _connected-to_within_
+  IsConnected g → EvenCycles g → Coloring 2 g
+theorem₂ g walks even-cycles = coloring where
   coloring : Coloring 2 g
-  Coloring.map coloring x = color-by-number (dist (walks (Fin.zero) x))
-  Coloring.contact coloring x y ceq with g x y
-  ... | Bool.false = refl
-  ... | Bool.true = ⊥-elim (Even.contradict ? ? ?) where
-    xc = walks Fin.zero x
-    yc = walks Fin.zero y
-    xl = dist xc
-    yl = dist yc
-    xw = walk xc
-    yw = walk yc
-    mw = ? x y refl  -- singleton walk
-    loop = ?
-
+  Coloring.map coloring = coloring-map g walks
+  Coloring.contact coloring x y ceq = elim (g x y) refl where
+    -- neat little contravariance trick since I'm new to with-abstraction
+    elim : (val : Bool) → g x y ≡ val → g x y ≡ Bool.false
+    elim Bool.false ne = ne
+    elim Bool.true e = ⊥-elim (coloring-contact g walks even-cycles x y ceq e)
