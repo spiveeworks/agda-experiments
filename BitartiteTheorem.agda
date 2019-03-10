@@ -4,7 +4,8 @@ open import Data.Fin as Fin using (Fin)
 open import Data.Bool as Bool using (Bool)
 open import Data.Product using (_,_)
 open import Function using (_∘_)
-open import Relation.Binary.PropositionalEquality as PropEq using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality
+open ≡-Reasoning
 
 open import Graph
 open import Even using (Even; Odd; even; odd)
@@ -12,7 +13,7 @@ open import Even using (Even; Odd; even; odd)
 open Coloring using (map)
 
 EvenCycles : {ord : ℕ} → Digraph ord → Set
-EvenCycles g = {length : ℕ} → Cycle g length → Even length
+EvenCycles {ord} g = {x : Fin ord} → (xx : Cycle g x) → Even (length xx)
 
 {- Color propositions for Evenness theorem -}
 
@@ -33,8 +34,6 @@ swap-neq {Fin.suc (Fin.suc ())} _
 
 swap-neq′ : ∀ {i j : Fin 2} → i ≡ j → i ≡ swap j → ⊥
 swap-neq′ {i} {j} eq neq = swap-neq eq′ where
-  open PropEq
-  open ≡-Reasoning
   eq′ =
     j      ≡⟨ sym eq ⟩
     i      ≡⟨ neq ⟩
@@ -54,75 +53,43 @@ decide-color (Fin.suc Fin.zero) (Fin.suc Fin.zero) = eq refl
 decide-color (Fin.suc Fin.zero) (Fin.suc (Fin.suc ()))
 decide-color (Fin.suc (Fin.suc ())) j
 
-color-alternate : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
+color-step : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
   (x y : Fin ord) → g x y ≡ Bool.true →
   map c x ≡ swap (map c y)
-color-alternate g c x y x~y with decide-color (map c x) (map c y)
+color-step g c x y x~y with decide-color (map c x) (map c y)
 ... | eq ceq with Coloring.contact c x y ceq
 ... | ()
-color-alternate g c x y x~y | neq cneq = cneq
-
-color-step : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
-  (x y z : Fin ord) → g x y ≡ Bool.true → g y z ≡ Bool.true →
-  map c x ≡ map c z
-color-step g c x y z x~y y~z =
-  map c x               ≡⟨ color-alternate g c x y x~y ⟩
-  swap (map c y)        ≡⟨ cong swap (color-alternate g c y z y~z) ⟩
-  swap (swap (map c z)) ≡⟨ swap-swap ⟩
-  map c z               ∎
-  where
-    open PropEq
-    open ≡-Reasoning
+color-step g c x y x~y | neq cneq = cneq
 
 {- Evenness theorem -}
 
-lemma-step : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
-  {length : ℕ} → ∀ (walk : Walk g (2 + length)) →
-  map c (beginning walk)
-    ≡ map c (beginning (tail (tail walk)))
-lemma-step g c walk = color-step g c x y z x~y y~z where
-  x = beginning walk
-  y = beginning (tail walk)
-  z = beginning (tail (tail walk))
-  x~y = Walk.valid walk Fin.zero
-  y~z = Walk.valid walk (Fin.suc Fin.zero)
-
 lemma-even : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
-  {length : ℕ} → ∀ (walk : Walk g length) → Even length →
-  map c (beginning walk) ≡ map c (end walk)
-lemma-even g c walk (ℕ.zero , refl) = refl
-lemma-even g c walk (ℕ.suc r , refl) =
-  map c (beginning walk) ≡⟨ lemma-step g c walk ⟩
-  map c (beginning rest) ≡⟨ lemma-even g c rest (r , refl) ⟩
-  map c (end walk) ∎
-  where
-    rest = tail (tail walk)
-    open PropEq
-    open ≡-Reasoning
-
+  {x y : Fin ord} → ∀ (xy : Walk g x y) → Even (length xy) →
+  map c x ≡ map c y
 lemma-odd : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
-  {length : ℕ} → ∀ (walk : Walk g length) → Odd length →
-  map c (beginning walk) ≡ swap (map c (end walk))
-lemma-odd g c walk (r , refl) =
-  map c (beginning walk) ≡⟨ color-alternate g c (beginning walk) (beginning
-                                 (tail walk)) (head walk) ⟩
-  swap (map c (beginning (tail walk))) ≡⟨ cong swap (lemma-even g c
-                                            (tail walk) (r , refl)) ⟩
-  swap (map c (end walk)) ∎
-  where
-    open PropEq
-    open ≡-Reasoning
+  {x y : Fin ord} → ∀ (xy : Walk g x y) → Odd (length xy) →
+  map c x ≡ swap (map c y)
+lemma-even g c finish leven = refl
+lemma-even g c {x} {y} (step {x′} xx′ x′y) leven =
+  map c x ≡⟨ color-step g c x x′ xx′ ⟩
+  swap (map c x′) ≡⟨ cong swap (lemma-odd g c x′y (Even.even-back leven)) ⟩
+  swap (swap (map c y)) ≡⟨ swap-swap ⟩
+  map c y ∎
+lemma-odd g c finish (r , ())
+lemma-odd g c {x} {y} (step {x′} xx′ x′y) lodd =
+  map c x ≡⟨ color-step g c x x′ xx′ ⟩
+  swap (map c x′) ≡⟨ cong swap (lemma-even g c x′y (Even.odd-back lodd)) ⟩
+  swap (map c y) ∎
 
 lemma-odd′ : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
-  {length : ℕ} → ∀ (walk : Walk g length) → Odd length →
-  map c (beginning walk) ≡ map c (end walk) → ⊥
+  {x y : Fin ord} → ∀ (xy : Walk g x y) → Odd (length xy) →
+  map c x ≡ map c y → ⊥
 lemma-odd′ g c walk len-odd ceq = swap-neq′ ceq (lemma-odd g c walk len-odd)
 
 theorem₁ : {ord : ℕ} → (g : Digraph ord) → Coloring 2 g → EvenCycles g
-theorem₁ g c {length} cycle with Even.decide length
+theorem₁ g c cycle with Even.decide (length cycle)
 ... | even prf = prf
-... | odd prf = ⊥-elim (lemma-odd′ g c (Cycle.walk cycle) prf eq-ends)
-  where eq-ends = PropEq.cong (map c) (Cycle.is-closed cycle)
+... | odd prf = ⊥-elim (lemma-odd′ g c cycle prf refl)
 
 {- Color propositions for Coloring theorem -}
 
@@ -133,12 +100,10 @@ color-by-number x with Even.decide x
 
 {- Coloring theorem -}
 
-open _connected-to_within_ using (dist)
-
 -- test if distance from zero is even, color by evenness
 coloring-map : {ord : ℕ} (g : Digraph ord) → IsConnected g → Fin ord → Fin 2
 coloring-map {ℕ.zero} g walks = λ ()
-coloring-map {ℕ.suc _} g walks = color-by-number ∘ dist ∘ walks (Fin.zero)
+coloring-map {ℕ.suc _} g walks = color-by-number ∘ length ∘ walks (Fin.zero)
 
 coloring-contact : {ord : ℕ} (g : Digraph ord) →
   (walks : IsConnected g) → EvenCycles g →
@@ -149,9 +114,7 @@ coloring-contact {ℕ.suc _} g walks even-cycles x y ceq edge =
   Even.contradict _ even-proof odd-proof where
     xc = walks Fin.zero x
     yc = walks y Fin.zero
-    mw = fromEdge x y edge
-    loopc = xc ++′ (mw ++′ yc)
-    loop = fromConnected Fin.zero loopc
+    loop = xc ++ (Walk.step edge yc)
     even-proof = even-cycles loop
     odd-proof = ?
 
