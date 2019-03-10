@@ -62,3 +62,8 @@ dec-odd n with decide n
 dec-odd n | even p-e = no λ p-o → contradict n p-e p-o
 dec-odd n | odd p-o = yes p-o
 
+
+data SameEvenness (n m : ℕ) : Set where
+  even : Even n → Even m → SameEvenness n m
+  odd : Odd n → Odd m → SameEvenness n m
+

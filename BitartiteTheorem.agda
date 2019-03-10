@@ -63,33 +63,33 @@ color-step g c x y x~y | neq cneq = cneq
 
 {- Evenness theorem -}
 
-lemma-even : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
+lemma₁-even : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
   {x y : Fin ord} → ∀ (xy : Walk g x y) → Even (length xy) →
   map c x ≡ map c y
-lemma-odd : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
+lemma₁-odd : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
   {x y : Fin ord} → ∀ (xy : Walk g x y) → Odd (length xy) →
   map c x ≡ swap (map c y)
-lemma-even g c finish leven = refl
-lemma-even g c {x} {y} (step {x′} xx′ x′y) leven =
+lemma₁-even g c finish leven = refl
+lemma₁-even g c {x} {y} (step {x′} xx′ x′y) leven =
   map c x ≡⟨ color-step g c x x′ xx′ ⟩
-  swap (map c x′) ≡⟨ cong swap (lemma-odd g c x′y (Even.even-back leven)) ⟩
+  swap (map c x′) ≡⟨ cong swap (lemma₁-odd g c x′y (Even.even-back leven)) ⟩
   swap (swap (map c y)) ≡⟨ swap-swap ⟩
   map c y ∎
-lemma-odd g c finish (r , ())
-lemma-odd g c {x} {y} (step {x′} xx′ x′y) lodd =
+lemma₁-odd g c finish (r , ())
+lemma₁-odd g c {x} {y} (step {x′} xx′ x′y) lodd =
   map c x ≡⟨ color-step g c x x′ xx′ ⟩
-  swap (map c x′) ≡⟨ cong swap (lemma-even g c x′y (Even.odd-back lodd)) ⟩
+  swap (map c x′) ≡⟨ cong swap (lemma₁-even g c x′y (Even.odd-back lodd)) ⟩
   swap (map c y) ∎
 
-lemma-odd′ : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
+lemma₁-odd′ : {ord : ℕ} → (g : Digraph ord) → (c : Coloring 2 g) →
   {x y : Fin ord} → ∀ (xy : Walk g x y) → Odd (length xy) →
   map c x ≡ map c y → ⊥
-lemma-odd′ g c walk len-odd ceq = swap-neq′ ceq (lemma-odd g c walk len-odd)
+lemma₁-odd′ g c walk len-odd ceq = swap-neq′ ceq (lemma₁-odd g c walk len-odd)
 
 theorem₁ : {ord : ℕ} → (g : Digraph ord) → Coloring 2 g → EvenCycles g
 theorem₁ g c cycle with Even.decide (length cycle)
 ... | even prf = prf
-... | odd prf = ⊥-elim (lemma-odd′ g c cycle prf refl)
+... | odd prf = ⊥-elim (lemma₁-odd′ g c cycle prf refl)
 
 {- Color propositions for Coloring theorem -}
 
@@ -105,6 +105,12 @@ coloring-map : {ord : ℕ} (g : Digraph ord) → IsConnected g → Fin ord → F
 coloring-map {ℕ.zero} g walks = λ ()
 coloring-map {ℕ.suc _} g walks = color-by-number ∘ length ∘ walks (Fin.zero)
 
+lemma₂-odd : {ord : ℕ} (g : Digraph ord) → {x y₁ y₂ z : Fin ord} →
+  (xy₁ : Walk g x y₁) → (y₁y₂ : g y₁ y₂ ≡ Bool.true) → (y₂z : Walk g y₂ z) →
+  Even.SameEvenness (length xy₁) (length y₂z) →
+  Odd (length (xy₁ ++ step y₁y₂ y₂z))
+lemma₂-odd = ?
+
 coloring-contact : {ord : ℕ} (g : Digraph ord) →
   (walks : IsConnected g) → EvenCycles g →
   (x y : Fin ord) → coloring-map g walks x ≡ coloring-map g walks y →
@@ -116,7 +122,7 @@ coloring-contact {ℕ.suc _} g walks even-cycles x y ceq edge =
     yc = walks y Fin.zero
     loop = xc ++ (Walk.step edge yc)
     even-proof = even-cycles loop
-    odd-proof = ?
+    odd-proof = lemma₂-odd g xc edge yc ?
 
 theorem₂ : {ord : ℕ} → (g : Digraph ord) →
   IsConnected g → EvenCycles g → Coloring 2 g
