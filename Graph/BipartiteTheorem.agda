@@ -148,6 +148,8 @@ coloring-contact {ℕ.suc _} g gsym walks even-cycles x y ceq edge =
     odd-proof = lemma₂-odd g xc edge yc
       (coloring-evenness g gsym walks x y ceq)
 
+-- we require connected, since in agda the extension to non-connected graphs
+-- says more about connectedness than it says about coloring...
 theorem₂ : {ord : ℕ} → (g : Digraph ord) →
   IsGraph g → IsConnected g → EvenCycles g → Coloring 2 g
 theorem₂ g gsym walks even-cycles = coloring where
@@ -158,3 +160,4 @@ theorem₂ g gsym walks even-cycles = coloring where
     elim : (val : Bool) → g x y ≡ val → g x y ≡ Bool.false
     elim Bool.false ne = ne
     elim Bool.true e = ⊥-elim (coloring-contact g gsym walks even-cycles x y ceq e)
+
