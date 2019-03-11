@@ -109,7 +109,8 @@ lemma₂-odd : {ord : ℕ} (g : Digraph ord) → {x y₁ y₂ z : Fin ord} →
   (xy₁ : Walk g x y₁) → (y₁y₂ : g y₁ y₂ ≡ Bool.true) → (y₂z : Walk g y₂ z) →
   Even.SameEvenness (length xy₁) (length y₂z) →
   Odd (length (xy₁ ++ step y₁y₂ y₂z))
-lemma₂-odd = ?
+lemma₂-odd g xy₁ y₁y₂ y₂z se = subst Odd (sym (++-len xy₁ (step y₁y₂ y₂z)))
+  (Even.different-sum′ se)
 
 coloring-evenness : {ord : ℕ} (g : Digraph (ℕ.suc ord)) →
   (gsym : IsGraph g) → (walks : IsConnected g) →

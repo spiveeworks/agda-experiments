@@ -1,4 +1,5 @@
 open import Data.Nat as ℕ using (ℕ; _*_; _+_)
+open import Data.Nat.Properties
 open import Data.Product
 open import Data.Empty as ⊥ using (⊥)
 open import Relation.Binary.PropositionalEquality
@@ -66,4 +67,27 @@ dec-odd n | odd p-o = yes p-o
 data SameEvenness (n m : ℕ) : Set where
   even : Even n → Even m → SameEvenness n m
   odd : Odd n → Odd m → SameEvenness n m
+
+even-even : ∀ {n m : ℕ} → Even n → Even m → Even (n + m)
+even-even (r₁ , refl) (r₂ , refl) = r₁ + r₂ , sym (*-distribʳ-+ 2 r₁ r₂)
+
+odd-odd : ∀ {n m : ℕ} → Odd n → Odd m → Even (n + m)
+odd-odd {n} {m} (r₁ , n-o) (r₂ , m-o) = 1 + r₁ + r₂ , nme where
+  open ≡-Reasoning
+  nme =
+    n + m ≡⟨ cong₂ _+_ n-o m-o ⟩
+    (1 + r₁ * 2) + (1 + r₂ * 2) ≡⟨ +-suc (1 + r₁ * 2) (r₂ * 2) ⟩
+    2 + r₁ * 2 + r₂ * 2 ≡⟨ cong (2 +_) (sym (*-distribʳ-+ 2 r₁ r₂)) ⟩
+    2 + (r₁ + r₂) * 2 ∎
+
+same-sum : ∀ {n m : ℕ} → SameEvenness n m → Even (n + m)
+same-sum (even n-e m-e) = even-even n-e m-e
+same-sum (odd n-o m-o) = odd-odd n-o m-o
+
+different-sum : ∀ {n m : ℕ} → SameEvenness n m → Odd (1 + n + m)
+different-sum nm = even-step (same-sum nm)
+
+different-sum′ : ∀ {n m : ℕ} → SameEvenness n m → Odd (n + (1 + m))
+different-sum′ nm with different-sum nm
+... | r , sum-odd = r , trans (+-suc _ _) sum-odd
 

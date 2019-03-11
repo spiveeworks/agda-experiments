@@ -74,3 +74,9 @@ reverse-len : {ord : ℕ} {g : Digraph ord} → (gsym : IsGraph g) →
   {x y : Fin ord} → (xy : Walk g x y) → length (reverse gsym xy) ≡ length xy
 reverse-len gsym xy = PropEq.trans (reverse-helper-len gsym xy finish) (Data.Nat.Properties.+-identityʳ _)
 
+++-len : {ord : ℕ} {g : Digraph ord} →
+  ∀ {x y z : Fin ord} → (xy : Walk g x y) (yz : Walk g y z) →
+  length (xy ++ yz) ≡ length xy + length yz
+++-len finish yz = refl
+++-len (step _ x′y) yz = PropEq.cong ℕ.suc (++-len x′y yz)
+
