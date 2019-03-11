@@ -111,26 +111,49 @@ lemma₂-odd : {ord : ℕ} (g : Digraph ord) → {x y₁ y₂ z : Fin ord} →
   Odd (length (xy₁ ++ step y₁y₂ y₂z))
 lemma₂-odd = ?
 
+coloring-evenness : {ord : ℕ} (g : Digraph (ℕ.suc ord)) →
+  (gsym : IsGraph g) → (walks : IsConnected g) →
+  ∀ (x y : Fin (ℕ.suc ord)) → coloring-map g walks x ≡ coloring-map g walks y →
+  Even.SameEvenness
+    (length (walks Fin.zero x))
+    (length (reverse gsym (walks Fin.zero y)))
+coloring-evenness g gsym walks x y ceq
+  with Even.decide (length (walks Fin.zero x))
+  | Even.decide (length (walks Fin.zero y))
+... | even zxe | even (r , yze) = even zxe (r , zye) where
+  zye =
+    length (reverse gsym (walks Fin.zero y)) ≡⟨ reverse-len gsym (walks Fin.zero y) ⟩
+    length (walks Fin.zero y) ≡⟨ yze ⟩
+    r * 2 ∎
+coloring-evenness g gsym walks x y () | even zxe | odd yzo
+coloring-evenness g gsym walks x y () | odd zxo | even yze
+... | odd zxo | odd (r , yzo) = odd zxo (r , zyo) where
+  zyo =
+    length (reverse gsym (walks Fin.zero y)) ≡⟨ reverse-len gsym (walks Fin.zero y) ⟩
+    length (walks Fin.zero y) ≡⟨ yzo ⟩
+    1 + r * 2 ∎
+
 coloring-contact : {ord : ℕ} (g : Digraph ord) →
-  (walks : IsConnected g) → EvenCycles g →
+  IsGraph g → (walks : IsConnected g) → EvenCycles g →
   (x y : Fin ord) → coloring-map g walks x ≡ coloring-map g walks y →
   g x y ≡ Bool.true → ⊥
-coloring-contact {ℕ.zero} g walks even-cycles ()
-coloring-contact {ℕ.suc _} g walks even-cycles x y ceq edge =
+coloring-contact {ℕ.zero} g gsym walks even-cycles ()
+coloring-contact {ℕ.suc _} g gsym walks even-cycles x y ceq edge =
   Even.contradict _ even-proof odd-proof where
     xc = walks Fin.zero x
-    yc = walks y Fin.zero
+    yc = reverse gsym (walks Fin.zero y)
     loop = xc ++ (Walk.step edge yc)
     even-proof = even-cycles loop
-    odd-proof = lemma₂-odd g xc edge yc ?
+    odd-proof = lemma₂-odd g xc edge yc
+      (coloring-evenness g gsym walks x y ceq)
 
 theorem₂ : {ord : ℕ} → (g : Digraph ord) →
-  IsConnected g → EvenCycles g → Coloring 2 g
-theorem₂ g walks even-cycles = coloring where
+  IsGraph g → IsConnected g → EvenCycles g → Coloring 2 g
+theorem₂ g gsym walks even-cycles = coloring where
   coloring : Coloring 2 g
   Coloring.map coloring = coloring-map g walks
   Coloring.contact coloring x y ceq = elim (g x y) refl where
     -- neat little contravariance trick since I'm new to with-abstraction
     elim : (val : Bool) → g x y ≡ val → g x y ≡ Bool.false
     elim Bool.false ne = ne
-    elim Bool.true e = ⊥-elim (coloring-contact g walks even-cycles x y ceq e)
+    elim Bool.true e = ⊥-elim (coloring-contact g gsym walks even-cycles x y ceq e)

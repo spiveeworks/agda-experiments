@@ -1,4 +1,5 @@
 open import Data.Nat as ℕ using (ℕ; _*_; _+_)
+import Data.Nat.Properties
 open import Data.Fin as Fin using (Fin)
 open import Data.Bool as Bool using (Bool)
 open import Function using (_∘_)
@@ -26,37 +27,22 @@ data Walk {ord : ℕ} (g : Digraph ord) (x : Fin ord) : Fin ord → Set where
   step : {x′ y : Fin ord} →
     g x x′ ≡ Bool.true → Walk g x′ y → Walk g x y
 
--- not maintained since new walk repr
-{-
-tail : {ord length : ℕ} {g : Digraph ord} → Walk g (1 + length) → Walk g length
-tail (vs via es) = (λ i → vs (Fin.suc i)) via (λ i → es (Fin.suc i))
+reverse-helper : {ord : ℕ} {g : Digraph ord} → IsGraph g →
+  {x y z : Fin ord} → Walk g x y → Walk g x z → Walk g y z
+reverse-helper gsym finish xz = xz
+reverse-helper {g = g} gsym {x} (step {x′} xx′ x′y) xz =
+  reverse-helper gsym x′y x′z where
+  x′z = step x′x xz where
+    open PropEq
+    open ≡-Reasoning
+    x′x =
+      g x′ x ≡⟨ gsym x′ x ⟩
+      g x x′ ≡⟨ xx′ ⟩
+      Bool.true ∎
 
-head : {ord length : ℕ} {g : Digraph ord} → (walk : Walk g (1 + length)) →
-  g (beginning walk) (beginning (tail walk)) ≡ Bool.true
-head (vs via es) = es Fin.zero
-
-reverse : {ord length : ℕ} {g : Digraph ord} → IsGraph g → Walk g length →
-  Walk g length
-reverse {ord} {length} {g} sym (steps via edges) = (steps ∘ invert) via
-  (λ i →
-    g (steps (invert (Fin.inject₁ i))) (steps (Fin.inject₁ (invert i)))
-      ≡⟨ sym _ _ ⟩
-    g (steps (Fin.inject₁ (invert i))) (steps (invert (Fin.inject₁ i)))
-      ≡⟨ cong (λ i′ → g (steps (Fin.inject₁ (invert i))) (steps i′)) (invert-lemma i) ⟩
-    g (steps (Fin.inject₁ (invert i))) (steps (Fin.suc (invert i)))
-      ≡⟨ edges (invert i) ⟩
-    Bool.true ∎
-  ) where
-  open PropEq hiding (sym)
-  open ≡-Reasoning
-  invert : {n : ℕ} → Fin n → Fin n
-  invert {ℕ.suc n} Fin.zero = Fin.fromℕ n
-  invert {ℕ.suc n} (Fin.suc x) = Fin.inject₁ (invert x)
-  invert-lemma : {n : ℕ} → ∀ (i : Fin n) →
-    invert (Fin.inject₁ i) ≡ Fin.suc (invert i)
-  invert-lemma Fin.zero = refl
-  invert-lemma (Fin.suc i) = cong Fin.inject₁ (invert-lemma i)
--}
+reverse : {ord : ℕ} {g : Digraph ord} → IsGraph g →
+  {x y : Fin ord} → Walk g x y → Walk g y x
+reverse {ord} {g} gsym xy = reverse-helper gsym xy finish
 
 -- closed walk is a cycle for now, since existence of odd cycles isnt affected
 -- by this distinciton
@@ -76,3 +62,15 @@ finish ++ yz = yz
 length : {ord : ℕ} {g : Digraph ord} {x y : Fin ord} → Walk g x y → ℕ
 length finish = 0
 length (step wx xy) = 1 + length xy
+
+reverse-helper-len : {ord : ℕ} {g : Digraph ord} → (gsym : IsGraph g) →
+  {x y z : Fin ord} → (xy : Walk g x y) → (xz : Walk g x z) →
+  length (reverse-helper gsym xy xz) ≡ length xy + length xz
+reverse-helper-len _ finish xz = refl
+reverse-helper-len _ (step x₁ xy) xz =
+  PropEq.trans (reverse-helper-len _ xy _) (Data.Nat.Properties.+-suc _ _)
+
+reverse-len : {ord : ℕ} {g : Digraph ord} → (gsym : IsGraph g) →
+  {x y : Fin ord} → (xy : Walk g x y) → length (reverse gsym xy) ≡ length xy
+reverse-len gsym xy = PropEq.trans (reverse-helper-len gsym xy finish) (Data.Nat.Properties.+-identityʳ _)
+
