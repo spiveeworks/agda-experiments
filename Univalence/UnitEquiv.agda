@@ -20,9 +20,6 @@ Deform {p = p} i j = p (i ∧ j)
   (Σ A (x ≡_)) ∋ (x , refl) ≡ (y , p)
 ΣDeform {p = p} i = p i , Deform {p = p} i
 
--- K⊤ : ∀ {p : tt ≡ tt} → p ≡ refl
--- K⊤ {p} i j = ?
-
 -- basic fiber reasoning
 
 fiber : ∀ {ℓ ℓ'} {A : Set ℓ} {B : Set ℓ'} (f : A → B) (y : B) → Set (ℓ ⊔ ℓ')
@@ -66,4 +63,13 @@ contrEquiv cx cy = (λ _ → cy .fst) , isoToIsEquiv (contrIso cx cy)
 contrPath : ∀ {l} → {A : Set l} {B : Set l} →
   isContr A → isContr B → A ≡ B
 contrPath cx cy = isoToPath (contrIso cx cy)
+
+-- K style reasoning
+
+K-helper : ∀ {p : tt ≡ tt} → p ≡ refl
+K-helper {p} i j = ?
+
+K⊤ : ∀ {l} (C : (x : ⊤) → x ≡ x → Set l) → C tt refl →
+  ∀ (x : ⊤) (p : x ≡ x) → C x p
+K⊤ C z tt p = transp (λ i → C tt (K-helper {p} (~ i))) i0 z
 

@@ -121,6 +121,7 @@ _ ≡˘⟨ refl _ ⟩ refl _ = refl _
 _∎ : ∀ {l} → {A : Set l} (x : A) → x ≡ x
 _∎ _ = refl _
 
+{-
 isoExp : ∀ {l r} (F₁ F₂ : Set l → Set r) → IsoFunctor F₁ → IsoFunctor F₂ → IsoFunctor (λ A → F₁ A → F₂ A)
 isoExp F₁ F₂ isoF₁ isoF₂ A B iso = out where
   iso₁ = isoF₁ A B iso
@@ -130,5 +131,7 @@ isoExp F₁ F₂ isoF₁ isoF₂ A B iso = out where
   out .isoBwd base = iso₂ .isoBwd ∘ base ∘ iso₁ .isoFwd
   out .isoSurj y = ? -- function extensionality/composition inversion needed
   out .isoInj y = ?
+-}
 
 
+mapAllEmpty
