@@ -1,7 +1,9 @@
-module Positive.Quotient where
+module Analysis.QuotP where
 
-open import Positive.Natural as ℕ⁺ using (ℕ⁺)
+open import Analysis.NatP as ℕ⁺ using (ℕ⁺)
   renaming (_+_ to _⟨+⟩_; _*_ to _⟨*⟩_)
+
+open import Relation.Binary.PropositionalEquality
 
 record ℚ⁺ : Set where
   constructor _:/_
@@ -34,3 +36,4 @@ x == y = (x / y) ==1
 module properties where
   open import Relation.Binary.PropositionalEquality
   dist : {a b c : ℚ⁺} → (a * (b + c)) == ((a * b) + (a * c))
+  dist = ?

@@ -1,4 +1,4 @@
-module Positive.Natural where
+module Analysis.NatP where
 
 open import Data.Nat as ℕ using (ℕ)
 
