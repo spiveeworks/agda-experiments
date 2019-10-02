@@ -36,7 +36,7 @@ loop = ext _ _ (λ A →
   ext _ _ (λ p → p)))
 
 
-
+-- this isn't actually a torus though? I'm very new to homotopies
 Torus : Set₁
 Torus = ∀ (A : Set) → (x : A) → (p₁ p₂ : x ≡ x) → p₁ ≡ p₂ → A
 

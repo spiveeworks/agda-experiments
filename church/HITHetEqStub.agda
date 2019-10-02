@@ -1,14 +1,11 @@
 {-# OPTIONS --without-K #-}
 open import Agda.Primitive
 
-[lv=_]_≡_ : ∀ {l} l′ → {A : Set l} → A → A → Set (l ⊔ lsuc l′)
-[lv=_]_≡_ {l} l′ {A} x y = ∀ (C : A → A → Set l′) → (∀ x → C x x) → C x y
+data _≡_ {l} {A : Set l} : A → A → Set l where
+  refl : ∀ {x} → x ≡ x
 
-refl : ∀ {l l′} {A : Set l} {x : A} → [lv= l′ ] x ≡ x
-refl {x = x} C z = z x
-
-_≡_ : ∀ {l} {A : Set l} → A → A → Set _
-_≡_ {l} {A} x y = [lv= l ] x ≡ y
+J : ∀ {l l′} {A : Set l} (C : A → A → Set l′) → (∀ x → C x x) → ∀ x y → x ≡ y → C x y
+J C z .x .x (refl {x}) = z x
 
 Sigma : ∀ {l₁ l₂} (A : Set l₁) (B : A → Set l₂) → Set _
 Sigma A B = ∀ (C : Set) → (∀ (x : A) → B x → C) → C
@@ -45,17 +42,18 @@ loop = ext _ _ (λ A →
   ext _ _ (λ x →
   ext _ _ (λ p → p)))
 
-Trapezoid : {A : Set} → {x y : A} →
-  [lv= lsuc (lsuc lzero) ] x ≡ y → x ≡ x → y ≡ y → Set _
-Trapezoid across = across
-  (λ x y → (x ≡ x) → (y ≡ y) → Set₁)
-  (λ x left right → [lv= lzero ] left ≡ right)
+Dumbbell : ∀ {l} {A : Set l} → {x y : A} →
+  x ≡ y → x ≡ x → y ≡ y → Set l
+Dumbbell = J
+  (λ x y → (x ≡ x) → (y ≡ y) → Set _)
+  (λ x left right → left ≡ right)
+  _ _
 
-Square : {A : Set} → {x : A} → [lv= lsuc (lsuc lzero) ] x ≡ x → x ≡ x → Set₁
-Square across end = Trapezoid across end end
+Square : ∀ {l} {A : Set l} → {x : A} → x ≡ x → x ≡ x → Set l
+Square across end = Dumbbell across end end
 
-Torus : Set₂
-Torus = ∀ (A : Set) → (x : A) → (p₁ p₂ : x ≡ x) → p₁ ≡ p₂ → A
+Torus : Set₁
+Torus = ∀ (A : Set) → (x : A) → (p₁ p₂ : x ≡ x) → Square p₁ p₂ → A
 
 point : Torus
 point A x p₁ p₂ sq = x
@@ -80,6 +78,7 @@ line₁pw A x p₁ p₂ sq = p₁
 line₂pw : ∀ A x p₁ p₂ sq → point A x p₁ p₂ sq ≡ point A x p₁ p₂ sq
 line₂pw A x p₁ p₂ sq = p₂
 
+{-
 squarehelper : line₁pw ≡ line₂pw
 squarehelper = ext _ _ (λ A →
   ext _ _ (λ x →
@@ -96,6 +95,7 @@ square C z = squarehelper
       (λ sq → f₂ A x p₁ p₂ sq)))))) )
   (λ f → z _)
 
+-- these don't seem to work since Torus isn't actually a torus?
 c2t : S¹ → S¹ → Torus
 c2t i j A x p₁ p₂ sq = ?
 
@@ -104,4 +104,5 @@ proj₁ z = ?
 
 proj₂ : Torus → S¹
 proj₂ z A x p = ?
+-}
 
