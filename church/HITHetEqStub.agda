@@ -78,6 +78,11 @@ line₁pw A x p₁ p₂ sq = p₁
 line₂pw : ∀ A x p₁ p₂ sq → point A x p₁ p₂ sq ≡ point A x p₁ p₂ sq
 line₂pw A x p₁ p₂ sq = p₂
 
+squareExt : ∀ {l₁} {l₂} → {A : Set l₁} → {B : A → Set l₂} →
+  (f : (x : A) → B x) → (p₁ p₂ : ∀ x → f x ≡ f x) →
+  (∀ x → Square (p₁ x) (p₂ x)) → Square (ext f f p₁) (ext f f p₂)
+squareExt f p₁ p₂ sq = ?
+
 {-
 squarehelper : line₁pw ≡ line₂pw
 squarehelper = ext _ _ (λ A →
