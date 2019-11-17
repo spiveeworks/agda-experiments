@@ -7,30 +7,23 @@ open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin)
 open import Data.Vec as Vec using (Vec)
 
+AddMul : System
+AddMul = array 2 (2 Vec.∷ 2 Vec.∷ Vec.[])
+
+_+₀_ : {A : Set} → A → A → Operator AddMul A
+x +₀ y = buildOp Fin.zero (x Vec.∷ y Vec.∷ Vec.[])
+
+_*₀_ : {A : Set} → A → A → Operator AddMul A
+x *₀ y = buildOp (Fin.suc Fin.zero) (x Vec.∷ y Vec.∷ Vec.[])
+
 Polynomial : ℕ → System
-Polynomial n = array (2 ℕ.+ n) (2 Vec.∷ 2 Vec.∷ Vec.replicate 0)
-
-_⟨+⟩_ : {n : ℕ} {A : Set} → A → A → Operator (Polynomial n) A
-_⟨+⟩_ {n} {A} x y = record { id = Fin.zero; arguments = x Vec.∷ y Vec.∷ Vec.[] }
-
-_⟨*⟩_ : {n : ℕ} {A : Set} → A → A → Operator (Polynomial n) A
-_⟨*⟩_ {n} {A} x y = record { id = Fin.suc Fin.zero; arguments = x Vec.∷ y Vec.∷ Vec.[] }
-
-⟨~⟩_ : {n : ℕ} {A : Set} → Fin n → Operator (Polynomial n) A
-⟨~⟩_ {n} {A} i = record { id = Fin.raise 2 i; arguments = empty i } where
-  empty : {m : ℕ} → (i : Fin m) → Vec A (Vec.lookup i (Vec.replicate 0))
-  empty Fin.zero = Vec.[]
-  empty (Fin.suc i) = empty i
+Polynomial = extend AddMul
 
 _+_ : {n : ℕ} {A : Set} →
   Expr (Polynomial n) → Expr (Polynomial n) → Expr (Polynomial n)
-x + y = Expr.fromOp (x ⟨+⟩ y)
+x + y = fromOp (injectOp (x +₀ y))
 
 _*_ : {n : ℕ} {A : Set} →
   Expr (Polynomial n) → Expr (Polynomial n) → Expr (Polynomial n)
-x * y = Expr.fromOp (x ⟨*⟩ y)
-
-~_ : {n : ℕ} {A : Set} → Fin n → Expr (Polynomial n)
-~ i = Expr.fromOp (⟨~⟩ i)
-
+x * y = fromOp (injectOp (x *₀ y))
 
