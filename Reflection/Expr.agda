@@ -11,6 +11,8 @@ record Array {l} (A : Set l) : Set l where
     length : ℕ
     content : Vec A length
 
+-- should be using Vector rather than Vec, since we mainly lookup
+-- may also help termination checking
 System : Set
 System = Array ℕ
 
@@ -62,4 +64,27 @@ varOp {array len _} {n} {A} i =
 var : {sys : System} {n : ℕ} → Fin n → Expr (extend sys n)
 var i = fromOp (varOp i)
 
+data Σf {l} : {n : ℕ} → Vec (Set l) n → Set l where
+  [] : Σf Vec.[]
+  _∷_ : {n : ℕ} {T : Set l} {Ts : Vec (Set l) n} →
+    T → Σf Ts → Σf (T Vec.∷ Ts)
+
+Σ-lookup : ∀ {l} {n} {Ts : Vec (Set l) n} →
+  (i : Fin n) → Σf Ts → Vec.lookup i Ts
+Σ-lookup Fin.zero (z Σf.∷ zs) = z
+Σ-lookup (Fin.suc i) (z Σf.∷ zs) = Σ-lookup i zs
+
+Substitution : System → (A : Set) → Set
+Substitution (array len ops) A = Σf (Vec.map (λ n → (Vec A n) → A) ops)
+
+mapLemma : {A : Set} {n : ℕ} {f : A → Set} (Ts : Vec A n) →
+  ∀ i → Vec.lookup i (Vec.map f Ts) → f (Vec.lookup i Ts)
+mapLemma (T Vec.∷ Ts) Fin.zero z = z
+mapLemma (T Vec.∷ Ts) (Fin.suc i) z = mapLemma Ts i z
+
+{-# TERMINATING #-}
+evaluate : (sys : System) → {A : Set} → Substitution sys A → Expr sys → A
+evaluate sys subs (fromOp (buildOp id args)) =
+  mapLemma _ id (Σ-lookup id subs)
+  (Vec.map (evaluate sys subs) args)
 
