@@ -32,13 +32,13 @@ record Expr (sys : System) : Set where
 extend : System → ℕ → System
 extend (system len rs) n = system (len ℕ.+ n) (rs Vector.++ (λ _ → 0))
 
-_≡_ : {A : Set} → A → A → Set₁
-x ≡ y = (C : _ → Set) → C x → C y
+_≡l_ : {A : Set} → A → A → Set₁
+x ≡l y = (C : _ → Set) → C x → C y
 
 open import Data.Sum as Sum using (_⊎_)
 
 -- similar to Data.Fin.Properties.splitAt-inject+
-splitAt-inject+ : ∀ m n i → Sum.inj₁ i ≡ Fin.splitAt m (Fin.inject+ n i)
+splitAt-inject+ : ∀ m n i → Sum.inj₁ i ≡l Fin.splitAt m (Fin.inject+ n i)
 splitAt-inject+ (ℕ.suc m) n Fin.zero C z = z
 splitAt-inject+ (ℕ.suc m) n (Fin.suc i) C z =
   splitAt-inject+ m n i
@@ -48,7 +48,7 @@ splitAt-inject+ (ℕ.suc m) n (Fin.suc i) C z =
   (λ j → C (Sum.[ (λ x → _⊎_.inj₁ (Fin.suc x)) , (λ x → _⊎_.inj₂ x) ] j)) z
 
 -- similar to Data.Fin.Properties.splitAt-raise
-splitAt-raise : ∀ m n i → Sum.inj₂ i ≡ Fin.splitAt m (Fin.raise {n} m i)
+splitAt-raise : ∀ m n i → Sum.inj₂ i ≡l Fin.splitAt m (Fin.raise {n} m i)
 splitAt-raise ℕ.zero n i C z = z
 splitAt-raise (ℕ.suc m) n i C z =
   splitAt-raise m n i
@@ -85,4 +85,11 @@ Substitution (system len ops) A = (i : Fin len) → (Vec A (ops i) → A)
 evaluate : (sys : System) → {A : Set} → Substitution sys A → Expr sys → A
 evaluate sys subs (fromOp (buildOp id args)) =
   subs id (Vec.map (evaluate sys subs) args)
+
+varSubst : (sys : System) → ∀ n m → Vector (Expr (extend sys m)) n →
+  Substitution (extend sys n) (Expr (extend sys m))
+varSubst (system len ops) n m vals i = elim (Fin.splitAt len i) where
+  elim : (i : Fin len ⊎ Fin n) → Vec _ (Sum.[ ops , (λ _ → 0) ] i) → _
+  elim (Sum.inj₁ i) args = fromOp (injectOp (buildOp i args))
+  elim (Sum.inj₂ j) Vec.[] = vals j
 
