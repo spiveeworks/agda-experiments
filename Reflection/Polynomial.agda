@@ -8,7 +8,7 @@ open import Data.Fin as Fin using (Fin)
 open import Data.Vec as Vec using (Vec)
 
 AddMul : System
-AddMul = array 2 (2 Vec.∷ 2 Vec.∷ Vec.[])
+AddMul = system 2 (λ _ → 2)
 
 _+₀_ : {A : Set} → A → A → Operator AddMul A
 x +₀ y = buildOp Fin.zero (x Vec.∷ y Vec.∷ Vec.[])
