@@ -86,10 +86,17 @@ evaluate : (sys : System) → {A : Set} → Substitution sys A → Expr sys → 
 evaluate sys subs (fromOp (buildOp id args)) =
   subs id (Vec.map (evaluate sys subs) args)
 
+injectSubst : (sys : System) → ∀ n → Substitution sys (Expr (extend sys n))
+injectSubst sys n i args = fromOp (injectOp (buildOp i args))
+
+extendSubst : (sys : System) → ∀ {n} {A} →
+  Substitution sys A → Vector A n → Substitution (extend sys n) A
+extendSubst (system len ops) {n} base vals i = elim (Fin.splitAt len i) where
+  elim : (i : Fin len ⊎ Fin n) → Vec _ (Sum.[ ops , (λ _ → 0) ] i) → _
+  elim (Sum.inj₁ i) args = base i args
+  elim (Sum.inj₂ j) Vec.[] = vals j
+
 varSubst : (sys : System) → ∀ n m → Vector (Expr (extend sys m)) n →
   Substitution (extend sys n) (Expr (extend sys m))
-varSubst (system len ops) n m vals i = elim (Fin.splitAt len i) where
-  elim : (i : Fin len ⊎ Fin n) → Vec _ (Sum.[ ops , (λ _ → 0) ] i) → _
-  elim (Sum.inj₁ i) args = fromOp (injectOp (buildOp i args))
-  elim (Sum.inj₂ j) Vec.[] = vals j
+varSubst sys n m = extendSubst sys (injectSubst sys m)
 
