@@ -1,45 +1,59 @@
 {-# OPTIONS --type-in-type #-}
+-- attempting Hurksens's approach
 
-Problem : Set
-Problem = (A : Set) → ((B : Set) → (B → B → Set) → A) → A
+U : Set
+-- note this is positive in Set, so in some sense 'contains' a Set
+-- BUT if we disqualify this term for that reason alone, then we also lose
+-- (Bool → A) → A =β (((C : Set) → ...) → A) → A
+--U = ∀ (X : Set) → ((X → Set) → X) → X
+-- but for now we try the following, which is already a Kind since it returns a
+-- Type directly
+U = ∀ (X : Set) → ((X → Set) → X) → X → Set
 
-inj : (A : Set) → (A → A → Set) → Problem
-inj A R A′ P = P A R
+τ : (U → Set) → U
+τ X A c a = ∀ (P : A → Set) → (∀ x → X x → P (c (x A c))) → P a
 
-_≡_ : {A : Set} → A → A → Set
-_≡_ {A} x y = ∀ (C : A → Set) → C x → C y
+σ : U → (U → Set)
+σ x = x U τ
 
-∃ : {A : Set} → (A → Set) → Set
-∃ {A} B = (C : Set) → ((x : A) → B x → C) → C
+-- U is paradoxical iff ∀ X → σ (τ X) = { τ (σ x′) | X x′ }
+-- i.e. ∀ x → σ (τ X) x <=> ∃ x′ : X x′ ∧ x ≡ τ (σ x′)
+-- in backwards direction that means X x′ => σ (τ X) (τ (σ x′))
+paradoxical-bwd : (X : U → Set) → ∀ x → X x → σ (τ X) (τ (σ x))
+-- τ X U τ (τ (σ x))
+-- P → (∀ x → X x → P (τ ((x U) τ))) → P (τ (σ x))
+paradoxical-bwd X x elem P prf = prf x elem
 
-_,_ : {A : Set} {B : A → Set} → (x : A) → B x → ∃ B
-_,_ x y C m = m x y
+-- in forwards direction it means f : σ (τ X) x -> U
+-- along with X (f(x, _)), and
+-- x ≡ τ (σ (f(x, _)))
+--   ≡ λ A c a → ∀ (P : A → Set) → (∀ x′ → f(x, _) U τ x′ → P (c (x′ A c))) → P a
+-- RHS (x A c) ? : x A c a
+-- ? : ∀ x′ → f(x, _) U τ x′ → x A c (c (x′ A c))
+paradoxical : (X : U → Set) → (x : U) → σ (τ X) x → U
+paradoxical X x prf U₁ τ₁ x₁ = ?
 
-Morph : (A : Set) → (R : A → A → Set) → (B : Set) → (S : B → B → Set) → Set
-Morph A R B S = ∃ λ (f : A → B) → ∀ x y → R x y → S (f x) (f y)
+paradoxical-fwd : ∀ X x prf → X (paradoxical X x prf)
+paradoxical-fwd = ?
 
-morph-id : (A : Set) → (R : A → A → Set) → Morph A R A R
-morph-id A R = (λ x → x) , (λ x y p → p)
+_<_ : U → U → Set
+x < y = σ y x
 
-lemma : ∀ A R B S → inj A R ≡ inj B S → Morph A R B S
-lemma A R B S eq = eq (λ x → x Set (λ D → λ T → Morph A R D T)) (morph-id A R)
+Inductive : (U → Set) → Set
+Inductive X = ∀ x → (∀ y → y < x → X y) → X x
 
+WellFounded : U → Set
+WellFounded x = ∀ X → Inductive X → X x
 
-List : Set → Set
-List A = (B : Set) → (A → B → B) → B → B
+Ω : U
+Ω = τ WellFounded
 
-empty : {A : Set} → List A
-empty B f y = y
+τ∘σ-continuous : ∀ x y → y < x → τ (σ y) < τ (σ x)
+τ∘σ-continuous x y lss P z = z y lss
 
-cons : {A : Set} → A → List A → List A
-cons x xs B f y = f x (xs B f y)
+lemma : ∀ X → Inductive X → (x : U) → (∀ y → y < x → X (τ (σ y))) → X (τ (σ x))
+lemma X indX x preds = indX (τ (σ x)) (λ y lss → lss X preds)
 
-
-
-Tree : Set
-Tree = (B : Set) → (B → B → B) → B → B
-
-buildTree : List Tree → Tree
-buildTree ts B f y = ts B (λ t y′ → f (t B f y) y′) y
-
+ords-wf : WellFounded Ω
+ords-wf X indX = indX Ω (λ y lss → ?)
 
