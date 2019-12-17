@@ -43,6 +43,28 @@ module TransExt where
   image f _ _ base x z (cons xy yz) =
     cons (image f _ _ base x _ xy) (base _ z yz)
 
+module EquivExt where
+  open TransExt using (TransExt)
+  open SymExt using (SymExt)
+
+  EquivExt : {A : Set} → Rel A lzero → Rel A lzero
+  EquivExt _~_ = TransExt (SymExt _~_)
+
+  refl : {A : Set} → (_~_ : Rel A lzero) → Reflexive (EquivExt _~_)
+  refl _~_ = TransExt.refl
+
+  sym : {A : Set} → (_~_ : Rel A lzero) → Symmetric (EquivExt _~_)
+  sym _~_ = TransExt.sym (SymExt _~_) (SymExt.sym _~_)
+
+  trans : {A : Set} → (_~_ : Rel A lzero) → Transitive (EquivExt _~_)
+  trans _~_ = TransExt.trans (SymExt _~_)
+
+  image : {A B : Set} → (f : A → B) → (_~_ : Rel A lzero) → (_~′_ : Rel B lzero)
+    → (∀ x y → x ~ y → f x ~′ f y) →
+    ∀ x y → EquivExt _~_ x y → EquivExt _~′_ (f x) (f y)
+  image f _~_ _~′_ base = TransExt.image f (SymExt _~_) (SymExt _~′_)
+    (SymExt.image f _~_ _~′_ base)
+
 module RelImage where
   import Relation.Binary.PropositionalEquality as PropEq
 

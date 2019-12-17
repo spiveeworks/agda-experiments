@@ -86,6 +86,9 @@ evaluate : (sys : System) → {A : Set} → Substitution sys A → Expr sys → 
 evaluate sys subs (fromOp (buildOp id args)) =
   subs id (Vec.map (evaluate sys subs) args)
 
+idSubst : (sys : System) → Substitution sys (Expr sys)
+idSubst sys i args = fromOp (buildOp i args)
+
 injectSubst : (sys : System) → ∀ n → Substitution sys (Expr (extend sys n))
 injectSubst sys n i args = fromOp (injectOp (buildOp i args))
 
@@ -100,3 +103,10 @@ varSubst : (sys : System) → ∀ n m → Vector (Expr (extend sys m)) n →
   Substitution (extend sys n) (Expr (extend sys m))
 varSubst sys n m = extendSubst sys (injectSubst sys m)
 
+compose : {sys : System} → {n m : ℕ} →
+  Expr (extend sys n) → Vector (Expr (extend sys m)) n →
+  Expr (extend sys m)
+compose {sys} {n} {m} f xs = evaluate (extend sys n) (varSubst sys n m xs) f
+
+apply : {sys : System} → Expr (extend sys 1) → Expr sys → Expr sys
+apply {sys} f x = evaluate (extend sys 1) (extendSubst sys (idSubst sys) (λ _ → x)) f
