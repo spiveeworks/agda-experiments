@@ -3,7 +3,8 @@ module Reflection.Equation where
 open import Reflection.Expr
 
 import RelExt
-open RelExt.EquivExt using (EquivExt)
+module EquivExt = RelExt.EquivExt
+open EquivExt using (EquivExt)
 
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin)
@@ -21,14 +22,19 @@ data BasisEquation (sys : System) (n m : ℕ) (x y : Expr (extend sys n)) :
     BasisEquation sys n m x y (apply f (compose x xs)) (apply f (compose y xs))
 
 record BasisEquationData (sys : System) : Set where
-  constructor law
+  constructor _:≈_
   field
-    vars : ℕ
+    {vars} : ℕ
     lhs : Expr (extend sys vars)
     rhs : Expr (extend sys vars)
 
 eqFromExprs : (sys : System) → BasisEquationData sys → ∀ m → Eq (extend sys m)
-eqFromExprs sys (law n lhs rhs) m = BasisEquation sys n m lhs rhs
+eqFromExprs sys (_:≈_ {n} lhs rhs) m = BasisEquation sys n m lhs rhs
+
+BasicBasisEqualityType : {sys : System} → BasisEquationData sys → Set
+BasicBasisEqualityType {sys} law@(_:≈_ {n} x y) = eqFromExprs sys law n x y
+--basicBasisEquality : ∀ {sys} law → BasicBasisEqualityType {sys} law
+--basicBasisEquality law = ? -- intro (var Fin.zero) var
 
 record DerivationRaw {sys : System} {numLaws : ℕ}
   (laws : Vector (BasisEquationData sys) numLaws)
@@ -41,4 +47,16 @@ record DerivationRaw {sys : System} {numLaws : ℕ}
 Derivation : {sys : System} {numLaws : ℕ} →
   Vector (BasisEquationData sys) numLaws → (m : ℕ) → Eq (extend sys m)
 Derivation laws m = EquivExt (DerivationRaw laws m)
+
+refl : ∀ {sys numLaws laws m} →
+  Rel.Reflexive (Derivation {sys} {numLaws} laws m)
+refl = EquivExt.refl _
+
+sym : ∀ {sys numLaws laws m} →
+  Rel.Symmetric (Derivation {sys} {numLaws} laws m)
+sym = EquivExt.sym _
+
+trans : ∀ {sys numLaws laws m} →
+  Rel.Transitive (Derivation {sys} {numLaws} laws m)
+trans = EquivExt.trans _
 

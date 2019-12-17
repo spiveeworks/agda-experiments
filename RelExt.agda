@@ -50,6 +50,9 @@ module EquivExt where
   EquivExt : {A : Set} → Rel A lzero → Rel A lzero
   EquivExt _~_ = TransExt (SymExt _~_)
 
+  inject : {A : Set} → {_~_ : Rel A lzero} → ∀ {x y} → x ~ y → EquivExt _~_ x y
+  inject p = TransExt.cons TransExt.refl (SymExt.fwd p)
+
   refl : {A : Set} → (_~_ : Rel A lzero) → Reflexive (EquivExt _~_)
   refl _~_ = TransExt.refl
 
