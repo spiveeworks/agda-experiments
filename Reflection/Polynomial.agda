@@ -6,36 +6,9 @@ open import Data.List as List using (List)
 open import Data.Bool as Bool using (Bool)
 open import Data.Nat as ℕ using (ℕ)
 open import Data.Fin as Fin using (Fin)
-open import Data.Vec as Vec using (Vec; _∷_; [])
+open import Data.Vec.Functional as Vector using (Vector; _∷_; [])
 
-ring : System
-ring = system 4 (Vec.lookup (0 ∷ 0 ∷ 2 ∷ 2 ∷ []))
-
-zeroOp : {A : Set} → Operator ring A
-zeroOp = buildOp Fin.zero []
-
-oneOp : {A : Set} → Operator ring A
-oneOp = buildOp (Fin.suc Fin.zero) []
-
-sumOp : {A : Set} → A → A → Operator ring A
-sumOp x y =
-  buildOp (Fin.suc (Fin.suc Fin.zero)) (x ∷ y ∷ [])
-
-prodOp : {A : Set} → A → A → Operator ring A
-prodOp x y =
-  buildOp (Fin.suc (Fin.suc (Fin.suc Fin.zero))) (x ∷ y ∷ [])
-
-freeRing : ℕ → System
-freeRing = extend ring
-
-{-
-record Mondoid (M : Set) : Set where
-  field
-    m₀ : M
-    _++_ : M → M → M
-
-open Monoid {{...}} public
--}
+ring = system 2 0 2
 
 -- without negation I guess this is a Rig
 -- but the intended use cases is Bools which have negation
@@ -51,12 +24,11 @@ record Ring (R : Set) : Set where
 open Ring {{...}} public
 
 instance
-  freeRingRing : ∀ {n} → Ring (Expr (freeRing n))
-  freeRingRing .r₀ = fromOp (injectOp zeroOp)
-  freeRingRing .r₁ = fromOp (injectOp oneOp)
-  freeRingRing ._+_ x y = fromOp (injectOp ( sumOp x y))
-  freeRingRing ._*_ x y = fromOp (injectOp (prodOp x y))
-
+  freeRing : ∀ {n} → Ring (Expr ring n)
+  freeRing .r₀ = constant Fin.zero
+  freeRing .r₁ = constant (Fin.suc Fin.zero)
+  freeRing ._+_ = binary Fin.zero
+  freeRing ._*_ = binary (Fin.suc Fin.zero)
 
 {-
 Polynomial : (R I : Set) (vars : ℕ) → Se
@@ -76,12 +48,6 @@ instance
   polyRing ._*_ x y is = ?
 -}
 
-ringBaseSubst : ∀ {R} → {{_ : Ring R}} → Substitution ring R
-ringBaseSubst Fin.zero [] = r₀
-ringBaseSubst (Fin.suc Fin.zero) [] = r₁
-ringBaseSubst (Fin.suc (Fin.suc Fin.zero)) (x ∷ y ∷ []) = x + y
-ringBaseSubst (Fin.suc (Fin.suc (Fin.suc Fin.zero))) (x ∷ y ∷ []) = x * y
-
-ringSubst : ∀ {R} {n} → {{_ : Ring R}} → (Fin n → R) → Substitution (freeRing n) R
-ringSubst = extendSubst ring ringBaseSubst
+ringEval : ∀ {R n} → {{_ : Ring R}} → Expr ring n → Vector R n → R
+ringEval = evaluate (r₀ ∷ r₁ ∷ []) [] (_+_ ∷ _*_ ∷ [])
 

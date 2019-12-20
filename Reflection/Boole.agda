@@ -46,11 +46,8 @@ linearMonomial : ∀ {n} → Fin n → PolyBool n
 linearMonomial Fin.zero = r₀ +x* r₁
 linearMonomial (Fin.suc i) = (linearMonomial i) +x* r₀
 
-polyBoolSubst : ∀ {n} → Substitution (freeRing n) (PolyBool n)
-polyBoolSubst = ringSubst linearMonomial
-
-simplify : ∀ {n} → Expr (freeRing n) → PolyBool n
-simplify {n} = evaluate (freeRing n) polyBoolSubst
+simplify : ∀ {n} → Expr ring n → PolyBool n
+simplify x = ringEval x linearMonomial
 
 module tests where
   open import Relation.Binary.PropositionalEquality

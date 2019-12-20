@@ -47,10 +47,3 @@ curryOp : {n : ℕ} {A B : Set} → (Vec A n → B) → OpType n A B
 curryOp {n} {A} {B} f =
   right-ident n (λ m → OpType m A B) (curryOpHelper {0} {n} f)
 
-{-
--- motivating use case:
-makeOp : (sys : System) → (i : Fin (Array.length sys)) →
-  OpType (Vec.lookup i (Array.content sys)) (Expr sys) (Expr sys)
-makeOp sys i = composeOp fromOp (curryOp (buildOp i))
--}
-

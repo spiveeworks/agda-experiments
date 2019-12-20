@@ -11,52 +11,56 @@ open import Data.Fin as Fin using (Fin)
 open import Data.Vec.Functional as Vector using (Vector)
 open import Relation.Binary as Rel using (Rel)
 
-Eq : (sys : System) → Set₁
-Eq sys = Rel (Expr sys) _
+ExprRel : (sys : System) (vars : ℕ) → Set₁
+ExprRel sys vars = Rel (Expr sys vars) _
 
-data BasisEquation (sys : System) (n m : ℕ) (x y : Expr (extend sys n)) :
-  Eq (extend sys m) where
-  intro :
-    (f : Expr (extend (extend sys m) 1)) →
-    (xs : Vector (Expr (extend sys m)) n) →
-    BasisEquation sys n m x y (apply f (compose x xs)) (apply f (compose y xs))
-
-record BasisEquationData (sys : System) : Set where
+record BasisEquation (sys : System) : Set where
   constructor _:≈_
   field
     {vars} : ℕ
-    lhs : Expr (extend sys vars)
-    rhs : Expr (extend sys vars)
+    lhs : Expr sys vars
+    rhs : Expr sys vars
 
-eqFromExprs : (sys : System) → BasisEquationData sys → ∀ m → Eq (extend sys m)
-eqFromExprs sys (_:≈_ {n} lhs rhs) m = BasisEquation sys n m lhs rhs
+data BasisRel (sys : System) (eq : BasisEquation sys) (vars : ℕ) :
+  ExprRel sys vars where
+  intro :
+    (f : Hole sys vars) (xs : Vector (Expr sys vars) (BasisEquation.vars eq)) →
+    BasisRel sys eq vars
+      (fill f (compose (BasisEquation.lhs eq) xs))
+      (fill f (compose (BasisEquation.rhs eq) xs))
 
-BasicBasisEqualityType : {sys : System} → BasisEquationData sys → Set
-BasicBasisEqualityType {sys} law@(_:≈_ {n} x y) = eqFromExprs sys law n x y
---basicBasisEquality : ∀ {sys} law → BasicBasisEqualityType {sys} law
---basicBasisEquality law = ? -- intro (var Fin.zero) var
+basicEquation : {sys : System} {eq : BasisEquation sys} → BasisRel sys eq
+  (BasisEquation.vars eq) (BasisEquation.lhs eq) (BasisEquation.rhs eq)
+basicEquation {sys} {law@(x :≈ y)} = subst₂ (BasisRel sys law _)
+  (compose-var x) (compose-var y) (intro id var) where
+  open import Relation.Binary.PropositionalEquality using (subst₂)
+  open Reflection.Expr.Properties using (compose-var)
 
 record DerivationRaw {sys : System} {numLaws : ℕ}
-  (laws : Vector (BasisEquationData sys) numLaws)
-  (m : ℕ) (x y : Expr (extend sys m)) : Set where
-  constructor raw
+  (laws : Vector (BasisEquation sys) numLaws)
+  (vars : ℕ) (x y : Expr sys vars) : Set where
   field
     i : Fin numLaws
-    prf : eqFromExprs sys (laws i) m x y
+    prf : BasisRel sys (laws i) vars x y
 
 Derivation : {sys : System} {numLaws : ℕ} →
-  Vector (BasisEquationData sys) numLaws → (m : ℕ) → Eq (extend sys m)
-Derivation laws m = EquivExt (DerivationRaw laws m)
+  Vector (BasisEquation sys) numLaws → (vars : ℕ) → ExprRel sys vars
+Derivation laws vars = EquivExt (DerivationRaw laws vars)
 
-refl : ∀ {sys numLaws laws m} →
-  Rel.Reflexive (Derivation {sys} {numLaws} laws m)
+law : ∀ {sys numLaws laws} i → Derivation {sys} {numLaws} laws
+  (BasisEquation.vars (laws i))
+  (BasisEquation.lhs (laws i)) (BasisEquation.rhs (laws i))
+law i = EquivExt.inject record {i = i; prf = basicEquation}
+
+refl : ∀ {sys numLaws laws vars} →
+  Rel.Reflexive (Derivation {sys} {numLaws} laws vars)
 refl = EquivExt.refl _
 
-sym : ∀ {sys numLaws laws m} →
-  Rel.Symmetric (Derivation {sys} {numLaws} laws m)
+sym : ∀ {sys numLaws laws vars} →
+  Rel.Symmetric (Derivation {sys} {numLaws} laws vars)
 sym = EquivExt.sym _
 
-trans : ∀ {sys numLaws laws m} →
-  Rel.Transitive (Derivation {sys} {numLaws} laws m)
+trans : ∀ {sys numLaws laws vars} →
+  Rel.Transitive (Derivation {sys} {numLaws} laws vars)
 trans = EquivExt.trans _
 
