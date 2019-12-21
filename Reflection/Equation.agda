@@ -29,16 +29,17 @@ data BasisRel (sys : System) (eq : BasisEquation sys) (vars : ℕ) :
       (fill f (compose (BasisEquation.lhs eq) xs))
       (fill f (compose (BasisEquation.rhs eq) xs))
 
-basicEquation : {sys : System} {eq : BasisEquation sys} → BasisRel sys eq
-  (BasisEquation.vars eq) (BasisEquation.lhs eq) (BasisEquation.rhs eq)
-basicEquation {sys} {law@(x :≈ y)} = subst₂ (BasisRel sys law _)
-  (compose-var x) (compose-var y) (intro id var) where
+basicCong : ∀ {sys eq n} f {x y} →
+  BasisRel sys eq n x y → BasisRel sys eq n (fill f x) (fill f y)
+basicCong {sys} {eq} {n} f (intro g xs) = subst₂ (BasisRel sys eq n)
+  (concat-fill f g _) (concat-fill f g _) (intro (f ++ g) xs) where
   open import Relation.Binary.PropositionalEquality using (subst₂)
-  open Reflection.Expr.Properties using (compose-var)
+  open Reflection.Expr.Properties using (concat-fill)
 
 record DerivationRaw {sys : System} {numLaws : ℕ}
   (laws : Vector (BasisEquation sys) numLaws)
   (vars : ℕ) (x y : Expr sys vars) : Set where
+  constructor raw
   field
     i : Fin numLaws
     prf : BasisRel sys (laws i) vars x y
@@ -47,10 +48,16 @@ Derivation : {sys : System} {numLaws : ℕ} →
   Vector (BasisEquation sys) numLaws → (vars : ℕ) → ExprRel sys vars
 Derivation laws vars = EquivExt (DerivationRaw laws vars)
 
-law : ∀ {sys numLaws laws} i → Derivation {sys} {numLaws} laws
-  (BasisEquation.vars (laws i))
-  (BasisEquation.lhs (laws i)) (BasisEquation.rhs (laws i))
-law i = EquivExt.inject record {i = i; prf = basicEquation}
+law : ∀ {sys numLaws laws} i {n} xs → Derivation {sys} {numLaws} laws n
+  (compose (BasisEquation.lhs (laws i)) xs)
+  (compose (BasisEquation.rhs (laws i)) xs)
+law i xs = EquivExt.inject (raw i (intro id xs))
+
+cong : ∀ {sys numLaws laws vars} f {x y} →
+  Derivation {sys} {numLaws} laws vars x y →
+  Derivation {sys} {numLaws} laws vars (fill f x) (fill f y)
+cong f = EquivExt.image (fill f) _ _
+  (λ{x y (raw i prf) → raw i (basicCong f prf)}) _ _
 
 refl : ∀ {sys numLaws laws vars} →
   Rel.Reflexive (Derivation {sys} {numLaws} laws vars)
