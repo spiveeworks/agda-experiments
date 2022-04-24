@@ -1,33 +1,4 @@
-Type : Set₁
-Type = Set
-
-Kind : Set₂
-Kind = Set₁
-
-id : ∀ {A : Type} → A → A
-id x = x
-
-data _≡_ {A : Type} (x : A) : A → Set where
-  refl : x ≡ x
-
-trans : ∀ {A} → {x y z : A} → x ≡ y → y ≡ z → x ≡ z
-trans xeqy refl = xeqy
-
-cong : ∀ {A} {B} → {x y  : A} → (f : A → B) → x ≡ y → f x ≡ f y
-cong f refl = refl
-
-record _≅_ (A B : Type) : Type where
-  field
-    fwd : A → B
-    bwd : B → A
-    fwdbwd : ∀ x → bwd (fwd x) ≡ x
-    bwdfwd : ∀ y → fwd (bwd y) ≡ y
-
-refl-iso : ∀ A → A ≅ A
-refl-iso A = record {fwd = id; bwd = id; fwdbwd = λ x → refl; bwdfwd = λ y → refl}
-
-inv-iso : ∀ {A} {B} → A ≅ B → B ≅ A
-inv-iso record{fwd = fwd; bwd = bwd; fwdbwd = fwdbwd; bwdfwd = bwdfwd} = record{fwd = bwd; bwd = fwd; fwdbwd = bwdfwd; bwdfwd = fwdbwd}
+open import Basics
 
 IsStructural : (F : Type → Type) → Kind
 IsStructural F = ∀ A B → A ≅ B → F A ≅ F B
@@ -80,3 +51,23 @@ exp-str Fstr Gstr A B iso = record{
     bwd = exp-bwd Fstr Gstr iso;
     fwdbwd = λ f → ext (exp-fwdbwd Fstr Gstr iso f);
     bwdfwd = λ g → ext (exp-bwdfwd Fstr Gstr iso g) }
+
+
+IsTrivial : Type → Type
+IsTrivial A = ∀ (x y : A) → x ≡ y
+
+trivial-map : ∀ {A} {B} → A ≅ B → IsTrivial A → IsTrivial B
+trivial-map iso trx y₁ y₂ = trans (trans y₁-x₁ x₁-x₂) x₂-y₂
+  where
+    open _≅_
+    y₁-x₁ : y₁ ≡ fwd iso (bwd iso y₁)
+    x₁-x₂ : fwd iso (bwd iso y₁) ≡ fwd iso (bwd iso y₂)
+    x₂-y₂ : fwd iso (bwd iso y₂) ≡ y₂
+
+    y₁-x₁ = sym (bwdfwd iso y₁)
+    x₁-x₂ = cong (fwd iso) (trx (bwd iso y₁) (bwd iso y₂))
+    x₂-y₂ = bwdfwd iso y₂
+
+trivial-iso : ∀ {A} {B} → IsTrivial A → IsTrivial B → (A → B) → (B → A) → A ≅ B
+trivial-iso trx try fwd bwd = record{fwd = fwd; bwd = bwd; fwdbwd = λ x → trx _ _; bwdfwd = λ y → try _ _}
+
