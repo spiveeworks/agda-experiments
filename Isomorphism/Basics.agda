@@ -9,6 +9,8 @@ Kind = Set₁
 id : ∀ {A : Type} → A → A
 id x = x
 
+infix 4 _≡_
+
 data _≡_ {l} {A : Set l} (x : A) : A → Set₀ where
   refl : x ≡ x
 
@@ -16,8 +18,12 @@ J : ∀ {l₁} {l₂} {A : Set l₁} (x : A) → (M : (y : A) → x ≡ y → Se
   → (M x refl) → (y : A) → (p : x ≡ y) → M y p
 J x M m _ refl = m
 
+transp : ∀ {l₁} {l₂} {A : Set l₁} (F : (x : A) → Set l₂)
+  → {x₁ x₂ : A} → x₁ ≡ x₂ → F x₁ → F x₂
+transp F {x₁} {x₂} p m = J x₁ (λ x _ → F x) m x₂ p
+
 cong : ∀ {l₁} {l₂} {A : Set l₁} {B : Set l₂} {x y : A} → (f : A → B) → x ≡ y → f x ≡ f y
-cong {x = x} f = J x (λ y p → f x ≡ f y) refl _
+cong {x = x} f p = transp (λ y → f x ≡ f y) p refl
 
 trans : ∀ {l} {A : Set l} → {x y z : A} → x ≡ y → y ≡ z → x ≡ z
 trans xeqy refl = xeqy
