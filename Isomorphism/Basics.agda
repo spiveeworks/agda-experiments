@@ -6,8 +6,22 @@ Type = Set
 Kind : Set₂
 Kind = Set₁
 
-id : ∀ {A : Type} → A → A
+---------------------------
+-- Polymoprhic Functions --
+---------------------------
+
+id : ∀ {l} {A : Set l} → A → A
 id x = x
+
+infixr 9 _∘_
+
+_∘_ : ∀ {l₁} {l₂} {l₃} → {A : Set l₁} {B : Set l₂} {C : Set l₃}
+  → (B → C) → (A → B) → A → C
+f ∘ g = λ x → f (g x)
+
+--------------
+-- Equality --
+--------------
 
 infix 4 _≡_
 
@@ -31,99 +45,95 @@ trans xeqy refl = xeqy
 sym : ∀ {l} {A : Set l} → {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
 
-cong-commute : ∀ {l₁} {l₂} {l₃} {A : Set l₁} {B : Set l₂} {C : Set l₃}
-  → {x y : A} → (f : B → C) → (g : A → B)
-  → ∀ (p : x ≡ y) → cong f (cong g p) ≡ cong (λ z → f (g z)) p
-cong-commute f g refl = refl
+------------------------
+-- Pointwise Equality --
+------------------------
 
-trans-id-l : ∀ {l} {A : Set l} → {x y : A} → (p : x ≡ y) → trans refl p ≡ p
-trans-id-l refl = refl
+infix 4 _≈_
 
-sym-inv-r : ∀ {l} {A : Set l} → {x y : A} → ∀ (p : x ≡ y) → trans p (sym p) ≡ refl
-sym-inv-r refl = refl
+_≈_ : ∀ {l₁} {l₂} {A : Set l₁} {B : A → Set l₂}
+  → ((x : A) → B x) → ((x : A) → B x) → Set l₁
+f₁ ≈ f₂ = ∀ x → f₁ x ≡ f₂ x
 
-sym-inv-l : ∀ {l} {A : Set l} → {x y : A} → ∀ (p : x ≡ y) → trans (sym p) p ≡ refl
-sym-inv-l refl = refl
+fsym : ∀ {l₁} {l₂} {A : Set l₁} {B : Set l₂} → {f g : A → B} → f ≈ g → g ≈ f
+fsym p x = sym (p x)
 
-conj-cancel-l : ∀ {l} {A : Set l} (f : A → A) (tr : ∀ x → f x ≡ x)
-  → ∀ {x} {y} → (p : x ≡ y)
-  → trans (trans (sym (tr x)) (cong f p)) (tr y) ≡ p
-conj-cancel-l f tr {x} refl = sym-inv-l (tr x)
+fsubst : ∀ {l₁} {l₂} {A : Set l₁} {B : Set l₂}
+  → (f g : A → B) → f ≈ g →
+  ∀ {x₁} {x₂} → f x₁ ≡ f x₂ → g x₁ ≡ g x₂
+fsubst f g pw {x₁} {x₂} pf = trans (trans (sym (pw x₁)) pf) (pw x₂)
 
-conj-cancel-r : ∀ {l} {A : Set l} (f : A → A) (tr : ∀ x → f x ≡ x)
-  → ∀ {x} {y} → (p : x ≡ y)
-  → trans (sym (tr x)) (trans (cong f p) (tr y)) ≡ p
-conj-cancel-r f tr {x} refl = trans
-  (cong (trans (sym (tr x))) (trans-id-l (tr x))) -- trans refl (tr x) ≡ tr x
-  (sym-inv-l (tr x)) -- trans (sym (tr x)) (tr x) ≡ refl
+fsubst′ : ∀ {l₁} {l₂} {A : Set l₁} {B : Set l₂}
+  → (f g : A → B) → f ≈ g →
+  ∀ {x₁} {x₂} → f x₁ ≡ f x₂ → g x₁ ≡ g x₂
+fsubst′ f g pw {x₁} {x₂} pf = trans (sym (pw x₁)) (trans pf (pw x₂))
 
-conj-contract-r : ∀ {l} {A : Set l} (f : A → A) (tr : ∀ x → f x ≡ x)
-  → ∀ {x} {y} → (p : x ≡ y)
-  → trans (tr x) (trans p (sym (tr y))) ≡ cong f p
-conj-contract-r f tr {x} refl = trans
-  (cong (trans (tr x)) (trans-id-l (sym (tr x)))) -- trans refl (sym (tr x)) ≡ sym (tr x)
-  (sym-inv-r (tr x)) -- trans (tr x) (sym (tr x)) ≡ refl
+IsBoolean : ∀ {l} {A : Set l} → (A → A) → Set l
+IsBoolean f = f ∘ f ≈ f
+
+IsInjective : ∀ {l₁} {l₂} {A : Set l₁} {B : Set l₂}
+  → (A → B) → Set l₁
+IsInjective f = ∀ x₁ x₂ → f x₁ ≡ f x₂ → x₁ ≡ x₂
+
+id-is-boolean : ∀ {l} {A : Set l}
+  → (f : A → A) → f ≈ id → IsBoolean f
+id-is-boolean f p x = cong f (p x)
+
+id-is-injective : ∀ {l} {A : Set l}
+  → (f : A → A) → f ≈ id → IsInjective f
+id-is-injective f pw _ _ pf = fsubst f id pw pf
+
+id-is-injective′ : ∀ {l} {A : Set l}
+  → (f : A → A) → f ≈ id → IsInjective f
+id-is-injective′ f pw _ _ pf = fsubst′ f id pw pf
+
+injective-boolean : ∀ {l} {A : Set l}
+  → (f : A → A) → IsInjective f → IsBoolean f → f ≈ id
+injective-boolean f inj bool x = inj (f x) x (bool x)
+
+--------------
+-- Inverses --
+--------------
+
+record _↔_ (A B : Type) : Type where
+  field
+    fwd : A → B
+    bwd : B → A
+    right : fwd ∘ bwd ≈ id
+    left : bwd ∘ fwd ≈ id
+
+refl-bij : ∀ A → A ↔ A
+refl-bij A = record {fwd = id; bwd = id; left = λ x → refl; right = λ y → refl}
+
+inv-bij : ∀ {A} {B} → A ↔ B → B ↔ A
+inv-bij record{fwd = fwd; bwd = bwd; left = left; right = right} =
+  record{fwd = bwd; bwd = fwd; left = right; right = left}
+
+-----------------
+-- Isomorphism --
+-----------------
+
+semi-from-right : {A B : Type} → (f : A → B) → (g : B → A)
+  → f ∘ g ≈ id → g ∘ f ∘ g ≈ g
+semi-from-right f g ri y = cong g (ri y)
+
+semi-from-left : {A B : Type} → (f : A → B) → (g : B → A)
+  → g ∘ f ≈ id → g ∘ f ∘ g ≈ g
+semi-from-left f g li y = li (g y)
+
+InvProofsCommute : {A B : Type} → (f : A → B) → (g : B → A)
+  → g ∘ f ≈ id → f ∘ g ≈ id → Type
+InvProofsCommute f g left right =
+  semi-from-left f g left ≈ semi-from-right f g right
 
 record _≅_ (A B : Type) : Type where
   field
     fwd : A → B
     bwd : B → A
-    fwdbwd : ∀ x → bwd (fwd x) ≡ x
-    bwdfwd : ∀ y → fwd (bwd y) ≡ y
+    left : bwd ∘ fwd ≈ id
+    right : fwd ∘ bwd ≈ id
+    commute : InvProofsCommute bwd fwd right left  -- Excuse the reversal.
 
 refl-iso : ∀ A → A ≅ A
-refl-iso A = record {fwd = id; bwd = id; fwdbwd = λ x → refl; bwdfwd = λ y → refl}
-
-inv-iso : ∀ {A} {B} → A ≅ B → B ≅ A
-inv-iso record{fwd = fwd; bwd = bwd; fwdbwd = fwdbwd; bwdfwd = bwdfwd} = record{fwd = bwd; bwd = fwd; fwdbwd = bwdfwd; bwdfwd = fwdbwd}
-
-IsRightInv : {A B : Type} → (f : A → B) → (g : B → A) → Type
-IsRightInv f g = ∀ y → f (g y) ≡ y
-
-right-inv-commute : {A B : Type} → (f : A → B) → (g : B → A)
-  → ∀ (fog : IsRightInv f g)
-  → ∀ y → cong (λ y → f (g y)) (fog y) ≡ fog (f (g y))
-right-inv-commute f g fog y = trans
-  (sym (conj-contract-r (λ y → f (g y)) fog (fog y)))
-  (cong (trans (fog (f (g y)))) (sym-inv-r (fog y)))
-
-right-inv-commute′ : {A B : Type} → (f : A → B) → (g : B → A)
-  → ∀ (fog : IsRightInv f g)
-  → ∀ y → cong f (cong g (fog y)) ≡ fog (f (g y))
-right-inv-commute′ f g fog y = trans
-  (cong-commute f g (fog y))
-  (right-inv-commute f g fog y)
-
-right-inv-fgf-commute : {A B : Type} → (f : A → B) → (g : B → A)
-  → ∀ (fog : IsRightInv f g)
-  → ∀ y → cong (λ x → g (f x)) (cong g (fog y)) ≡ cong g (fog (f (g y)))
-right-inv-fgf-commute f g fog y = trans
-  (sym (cong-commute g f (cong g (fog y))))
-  (cong (cong g) (right-inv-commute′ f g fog y))
-
-IsNatural : {A B : Type} → (iso : A ≅ B) → Type
-IsNatural record{fwd = f; bwd = g; fwdbwd = gof; bwdfwd = fog}
-  = ∀ x → fog (f x) ≡ cong f (gof x)
-
-natbwdfwd : {A B : Type} → (iso : A ≅ B) → ∀ y → _≅_.fwd iso (_≅_.bwd iso y) ≡ y
-natbwdfwd record{fwd = f; bwd = g; fwdbwd = gof; bwdfwd = fog} y
-  = trans (trans (sym (fog (f (g y)))) (cong f (gof (g y)))) (fog y)
-
-mknatiso : {A B : Type} → A ≅ B → A ≅ B
-mknatiso iso = record{
-  fwd = _≅_.fwd iso;
-  bwd = _≅_.bwd iso;
-  fwdbwd = _≅_.fwdbwd iso;
-  bwdfwd = natbwdfwd iso}
-
-nat-proof-raw : ∀ {A B : Type} → (iso : A ≅ B)
-  → ∀ x → natbwdfwd iso (_≅_.fwd iso x) ≡ cong (_≅_.fwd iso) (_≅_.fwdbwd iso x)
-nat-proof-raw record{fwd = f; bwd = g; fwdbwd = gof; bwdfwd = fog} x = trans
-  (cong
-    (λ p → trans (trans (sym (fog (f (g (f x))))) p) (fog (f x)))
-    (sym (right-inv-fgf-commute g f gof x)))
-  (conj-cancel-l (λ y → f (g y)) fog (cong f (gof x)))
-
-nat-proof : ∀ {A B : Type} → (iso : A ≅ B) → IsNatural (mknatiso iso)
-nat-proof = nat-proof-raw
+refl-iso A = record {fwd = id; bwd = id; left = λ x → refl; right = λ y → refl; commute = λ x → refl}
 
