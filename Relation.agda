@@ -33,75 +33,61 @@ record IsPreorder {b} {a} {A : Set a} (_≤_ : Rel {b} A) : Set (a ⊔ b) where
     refl : Reflexive _≤_
     trans : Transitive _≤_
 
-data SymClosure {b} {a} {A : Set a} (_#_ : Rel {b} A) (x y : A) : Set b where
-  base : x # y → SymClosure _#_ x y
-  sym : y # x → SymClosure _#_ x y
+module Closures {b} {a} {A : Set a} (_#_ : Rel {b} A) where
+  data SymClosure (x y : A) : Set b where
+    base : x # y → SymClosure x y
+    sym : y # x → SymClosure x y
 
-symclosure-sym : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A) → Symmetric (SymClosure _#_)
-symclosure-sym _#_ (base p) = sym p
-symclosure-sym _#_ (sym p) = base p
+  symclosure-sym : Symmetric SymClosure
+  symclosure-sym (base p) = sym p
+  symclosure-sym (sym p) = base p
 
-symclosureproof : ∀ {b₁} {b₂} {a} {A : Set a} (_#_ : Rel {b₁} A)
-  → SymClosure {b₁} _#_ ⇒ RelClosure {b₁} {b₂} Symmetric _#_
-symclosureproof _#_ (base p) _~_ imp symprf = imp p
-symclosureproof _#_ (sym p) _~_ imp symprf = symprf (imp p)
+  symclosureproof : ∀ {b′} → SymClosure ⇒ RelClosure {b} {b′} Symmetric _#_
+  symclosureproof (base p) _~_ imp symprf = imp p
+  symclosureproof (sym p) _~_ imp symprf = symprf (imp p)
 
-symclosureequiv : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A)
-  → SymClosure {b} _#_ ⇔ RelClosure {b} {b} Symmetric _#_
-_⇔_.fwd (symclosureequiv _#_) = symclosureproof _#_
-_⇔_.bwd (symclosureequiv _#_) cls = cls (SymClosure _#_)
-  SymClosure.base
-  (symclosure-sym _#_)
+  symclosureequiv : SymClosure ⇔ RelClosure {b} {b} Symmetric _#_
+  _⇔_.fwd symclosureequiv = symclosureproof
+  _⇔_.bwd symclosureequiv cls = cls SymClosure SymClosure.base symclosure-sym
 
-data TransClosure {b} {a} {A : Set a} (_#_ : Rel {b} A) (x y : A) : Set (a ⊔ b) where
-  base : x # y → TransClosure _#_ x y
-  cons : ∀ {x′} → TransClosure _#_ x x′ → x′ # y → TransClosure _#_ x y
+  data TransClosure (x y : A) : Set (a ⊔ b) where
+    base : x # y → TransClosure x y
+    cons : ∀ {x′} → TransClosure x x′ → x′ # y → TransClosure x y
 
-transclosure-trans : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A) → Transitive (TransClosure _#_)
-transclosure-trans _#_ p₁ (base p₂) = cons p₁ p₂
-transclosure-trans _#_ p₁ (cons p₂ p₃) = cons (transclosure-trans _#_ p₁ p₂) p₃
+  transclosure-trans : Transitive TransClosure
+  transclosure-trans p₁ (base p₂) = cons p₁ p₂
+  transclosure-trans p₁ (cons p₂ p₃) = cons (transclosure-trans p₁ p₂) p₃
 
-transclosureproof : ∀ {b₁} {b₂} {a} {A : Set a} (_#_ : Rel {b₁} A)
-  → TransClosure {b₁} _#_ ⇒ RelClosure {b₁} {b₂} Transitive _#_
-transclosureproof _#_ (base p) _<_ imp transprf = imp p
-transclosureproof _#_ (cons p₁ p₂) _<_ imp transprf = transprf
-  (transclosureproof _#_ p₁ _<_ imp transprf)
-  (imp p₂)
+  transclosureproof : ∀ {b′} → TransClosure ⇒ RelClosure {b} {b′} Transitive _#_
+  transclosureproof (base p) _<_ imp transprf = imp p
+  transclosureproof (cons p₁ p₂) _<_ imp transprf = transprf
+    (transclosureproof p₁ _<_ imp transprf)
+    (imp p₂)
 
-transclosureequiv : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A)
-  → TransClosure {b} _#_ ⇔ RelClosure {b} {a ⊔ b} Transitive _#_
-_⇔_.fwd (transclosureequiv _#_) = transclosureproof _#_
-_⇔_.bwd (transclosureequiv _#_) cls = cls (TransClosure _#_)
-  TransClosure.base
-  (transclosure-trans _#_)
+  transclosureequiv : TransClosure ⇔ RelClosure {b} {a ⊔ b} Transitive _#_
+  _⇔_.fwd transclosureequiv = transclosureproof
+  _⇔_.bwd transclosureequiv cls = cls TransClosure TransClosure.base transclosure-trans
 
-data PreorderClosure {b} {a} {A : Set a} (_#_ : Rel {b} A) : Rel {a ⊔ b} A where
-  refl : ∀ {x} → PreorderClosure _#_ x x
-  cons : ∀ {x} {y} {z} → PreorderClosure _#_ x y → y # z → PreorderClosure _#_ x z
+  data PreorderClosure : Rel {a ⊔ b} A where
+    refl : ∀ {x} → PreorderClosure x x
+    cons : ∀ {x} {y} {z} → PreorderClosure x y → y # z → PreorderClosure x z
 
-preorderclosure-embed : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A) → _#_ ⇒ PreorderClosure _#_
-preorderclosure-embed _#_ p = cons refl p
+  preorderclosure-embed : _#_ ⇒ PreorderClosure
+  preorderclosure-embed p = cons refl p
 
-preorderclosure-trans : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A) → Transitive (PreorderClosure _#_)
-preorderclosure-trans _#_ p₁ refl = p₁
-preorderclosure-trans _#_ p₁ (cons p₂ p₃) = cons (preorderclosure-trans _#_ p₁ p₂) p₃
+  preorderclosure-trans : Transitive PreorderClosure
+  preorderclosure-trans p₁ refl = p₁
+  preorderclosure-trans p₁ (cons p₂ p₃) = cons (preorderclosure-trans p₁ p₂) p₃
 
-preorderclosure-ispre : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A) → IsPreorder (PreorderClosure _#_)
-preorderclosure-ispre _#_ = record{
-  refl = PreorderClosure.refl;
-  trans = preorderclosure-trans _#_}
+  preorderclosure-ispre : IsPreorder PreorderClosure
+  preorderclosure-ispre = record{refl = PreorderClosure.refl; trans = preorderclosure-trans}
 
-preorderclosureproof : ∀ {b₁} {b₂} {a} {A : Set a} (_#_ : Rel {b₁} A)
-  → PreorderClosure {b₁} _#_ ⇒ RelClosure {b₁} {b₂} IsPreorder _#_
-preorderclosureproof _#_ refl _<_ imp ispre = IsPreorder.refl ispre
-preorderclosureproof _#_ (cons p₁ p₂) _<_ imp ispre = IsPreorder.trans ispre
-  (preorderclosureproof _#_ p₁ _<_ imp ispre)
-  (imp p₂)
+  preorderclosureproof : ∀ {b′} → PreorderClosure ⇒ RelClosure {b} {b′} IsPreorder _#_
+  preorderclosureproof refl _<_ imp ispre = IsPreorder.refl ispre
+  preorderclosureproof (cons p₁ p₂) _<_ imp ispre = IsPreorder.trans ispre
+    (preorderclosureproof p₁ _<_ imp ispre)
+    (imp p₂)
 
-preorderclosureequiv : ∀ {b} {a} {A : Set a} (_#_ : Rel {b} A)
-  → PreorderClosure {b} _#_ ⇔ RelClosure {b} {a ⊔ b} IsPreorder _#_
-_⇔_.fwd (preorderclosureequiv _#_) = preorderclosureproof _#_
-_⇔_.bwd (preorderclosureequiv _#_) cls = cls (PreorderClosure _#_)
-  (preorderclosure-embed _#_)
-  (preorderclosure-ispre _#_)
-
+  preorderclosureequiv : PreorderClosure ⇔ RelClosure {b} {a ⊔ b} IsPreorder _#_
+  _⇔_.fwd preorderclosureequiv = preorderclosureproof
+  _⇔_.bwd preorderclosureequiv cls = cls PreorderClosure preorderclosure-embed preorderclosure-ispre
