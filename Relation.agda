@@ -68,6 +68,17 @@ module Closures {b} {a} {A : Set a} (_#_ : Rel {b} A) where
   _⇔_.fwd transclosureequiv = transclosureproof
   _⇔_.bwd transclosureequiv cls = cls TransClosure TransClosure.base transclosure-trans
 
+  transclosure-symtrans : Symmetric _#_ → ∀ {x} {y} {z}
+    → TransClosure x y → TransClosure z y → TransClosure x z
+  transclosure-symtrans issym p₁ (base p₂) = cons p₁ (issym p₂)
+  transclosure-symtrans issym p₁ (cons p₂ p₃) =
+    transclosure-symtrans issym (cons p₁ (issym p₃)) p₂
+
+  transclosure-resp-sym : Symmetric _#_ → Symmetric TransClosure
+  transclosure-resp-sym issym (base p) = base (issym p)
+  transclosure-resp-sym issym (cons p₁ p₂) =
+    transclosure-symtrans issym (base (issym p₂)) p₁
+
   data PreorderClosure : Rel {a ⊔ b} A where
     refl : ∀ {x} → PreorderClosure x x
     cons : ∀ {x} {y} {z} → PreorderClosure x y → y # z → PreorderClosure x z
@@ -91,3 +102,13 @@ module Closures {b} {a} {A : Set a} (_#_ : Rel {b} A) where
   preorderclosureequiv : PreorderClosure ⇔ RelClosure {b} {a ⊔ b} IsPreorder _#_
   _⇔_.fwd preorderclosureequiv = preorderclosureproof
   _⇔_.bwd preorderclosureequiv cls = cls PreorderClosure preorderclosure-embed preorderclosure-ispre
+
+  preorderclosure-symtrans : Symmetric _#_ → ∀ {x} {y} {z}
+    → PreorderClosure x y → PreorderClosure z y → PreorderClosure x z
+  preorderclosure-symtrans issym p₁ refl = p₁
+  preorderclosure-symtrans issym p₁ (cons p₂ p₃) =
+    preorderclosure-symtrans issym (cons p₁ (issym p₃)) p₂
+
+  preorderclosure-resp-sym : Symmetric _#_ → Symmetric PreorderClosure
+  preorderclosure-resp-sym issym p = preorderclosure-symtrans issym refl p
+
