@@ -1,7 +1,7 @@
 open import Agda.Builtin.Nat
 open import Agda.Builtin.Bool
 
-module Models.SimplyTyped (typevars : Nat) where
+module Models.SimplyTyped {typevars : Nat} where
 
 infixr 5 _and_
 
@@ -22,7 +22,7 @@ false and _ = false
 true and b = b
 
 infix 0 if_then_else_
-if_then_else_ : ∀ {a} {A : Set a} → Bool → A → A → A
+if_then_else_ : ∀ {l} {A : Set l} → Bool → A → A → A
 if true then x else y = x
 if false then x else y = y
 
@@ -55,19 +55,21 @@ findec (fsuc _) fzero = false ⊣ λ ()
 
 infixr 5 _::_
 
-data Vec (A : Set) : Nat → Set where
+data Vec {l} (A : Set l) : Nat → Set l where
   [] : Vec A zero
   _::_ : ∀ {n} → A → Vec A n → Vec A (suc n)
 
 infix 4 _!!_
 
-_!!_ : ∀ {n} {A} → Vec A n → Fin n → A
+_!!_ : ∀ {l} {n} {A : Set l} → Vec A n → Fin n → A
 [] !! ()
 (x :: xs) !! fzero = x
 (x :: xs) !! (fsuc i) = xs !! i
 
 Typevar : Set
 Typevar = Fin typevars
+
+infixr 20 _[→]_
 
 data Type : Set where
   _[→]_ : Type → Type → Type
@@ -107,9 +109,11 @@ data given_expr_has-type_ {vars} (ctx : Vec Type vars) : Expr vars → Type → 
     → given ctx expr x has-type A
     → given ctx expr Apply f x has-type B
 
-data TypeCheck {vars} (ctx : Vec Type vars) (x : Expr vars) : Set where
-  success : (T : Type) → given ctx expr x has-type T → TypeCheck ctx x
-  failure : ((T : Type) → given ctx expr x has-type T → Void) → TypeCheck ctx x
+record Typechecks {vars} (ctx : Vec Type vars) (x : Expr vars) : Set where
+  constructor _[⊣]_
+  field
+    ty : Type
+    derivation : given ctx expr x has-type ty
 
 types-are-unique : ∀ {vars} (ctx : Vec Type vars) x {T₁} {T₂}
   → given ctx expr x has-type T₁ → given ctx expr x has-type T₂ → T₁ ≡ T₂
@@ -119,32 +123,52 @@ types-are-unique ctx (Lambda A x) (lambdaty p₁) (lambdaty p₂) =
 types-are-unique ctx (Apply f x) (apply-ty pf₁ px₁) (apply-ty pf₂ px₂) =
     equal-codomains (types-are-unique ctx f pf₁ pf₂)
 
-compare-types : ∀ {vars} (ctx : Vec Type vars) x T
-  → TypeCheck ctx x → Dec (given ctx expr x has-type T)
-compare-types ctx x T (failure disproof) = false ⊣ λ p → disproof T p
-compare-types ctx x T₁ (success T₂ p₂) with tydec T₁ T₂
-... | true ⊣ refl = true ⊣ p₂
-... | false ⊣ nt = false ⊣ λ p₁ → nt (types-are-unique ctx x p₁ p₂)
-
 types-cant-differ : ∀ {vars} (ctx : Vec Type vars) x {a} {A} {B}
   → given ctx expr x has-type (var a) → given ctx expr x has-type (A [→] B) → Void
 types-cant-differ ctx x p₁ p₂ with types-are-unique ctx x p₁ p₂
 ... | ()
 
-type-check : ∀ {vars} ctx x → TypeCheck {vars} ctx x
-type-check ctx (Var i) = success (ctx !! i) varty
+type-check : ∀ {vars} ctx x → Dec (Typechecks {vars} ctx x)
+type-check ctx (Var i) = true ⊣ (ctx !! i) [⊣] varty
 type-check ctx (Lambda A x) with type-check (A :: ctx) x
-... | failure np = failure λ {(A [→] B) (lambdaty p) → np _ p}
-... | success B p = success (A [→] B) (lambdaty p)
+... | false ⊣ np = false ⊣ λ {((A [→] B) [⊣] lambdaty p) → np (_ [⊣] p)}
+... | true ⊣ B [⊣] p = true ⊣ (A [→] B) [⊣] lambdaty p
 type-check ctx (Apply f x) with type-check ctx f | type-check ctx x
-... | failure npf | _ = failure λ {B (apply-ty pf px) → npf _ pf}
-... | _ | failure npx = failure λ {B (apply-ty pf px) → npx _ px}
-... | success (var a) pf₁ | _ = failure
-  λ {B (apply-ty pf₂ px) → types-cant-differ _ _ pf₁ pf₂}
-... | success (A₁ [→] B) pf | success A₂ px with tydec A₁ A₂
-...     | false ⊣ neq = failure λ {A₃ (apply-ty pf₃ px₃)
+    -- Propogate errors up the tree.
+... | false ⊣ npf | _ = false ⊣ λ {(B [⊣] apply-ty pf px) → npf (_ [⊣] pf)}
+    -- Can't apply unknown types to things.
+... | _ | false ⊣ npx = false ⊣ λ {(B [⊣] apply-ty pf px) → npx (_ [⊣] px)}
+    -- Propogate errors up the tree.
+... | true ⊣ (var a) [⊣] pf₁ | _ = false ⊣
+  λ {(B [⊣] apply-ty pf₂ px) → types-cant-differ _ _ pf₁ pf₂}
+... | true ⊣ (A₁ [→] B) [⊣] pf | true ⊣ A₂ [⊣] px with tydec A₁ A₂
+        -- Argument is the wrong type.
+...     | false ⊣ neq = false ⊣ λ {(A₃ [⊣] apply-ty pf₃ px₃)
     → neq (trans (equal-domains (types-are-unique _ _ pf pf₃))
                  (types-are-unique _ _ px₃ px))}
-...     | true ⊣ refl = success B (apply-ty pf px)
+        -- Everything matches up, continue the derivation!
+...     | true ⊣ refl = true ⊣ B [⊣] (apply-ty pf px)
 
+
+ToSet : ∀ {a} → Vec (Set a) typevars → Type → Set a
+ToSet ts (A [→] B) = ToSet ts A → ToSet ts B
+ToSet ts (var i) = ts !! i
+
+data Context {a} (tys : Vec (Set a) typevars) : ∀ {n} → Vec Type n → Set a where
+  cempty : Context tys {0} []
+  cval : ∀ {n} {vt} {vts} → ToSet tys vt → Context tys {n} vts → Context tys (vt :: vts)
+
+ctx-lookup : ∀ {a} {tys} {n} {vts} → Context {a} tys {n} vts
+  → (i : Fin n) → ToSet tys (vts !! i)
+ctx-lookup (cval val vals) fzero = val
+ctx-lookup (cval val vals) (fsuc i) = ctx-lookup vals i
+
+to-function : ∀ {vars} (ctx : Vec Type vars) x T → given ctx expr x has-type T
+  → ∀ {a} → (tys : Vec (Set a) typevars) → Context tys ctx → ToSet tys T
+to-function ctx (Var i) .(ctx !! i) varty tys vals = ctx-lookup vals i
+to-function ctx (Lambda A x) (A [→] B) (lambdaty prf) tys vals val =
+  to-function (A :: ctx) x B prf tys (cval val vals)
+to-function ctx (Apply f x) B (apply-ty pf px) tys vals =
+  to-function ctx f (_ [→] B) pf tys vals
+  (to-function ctx x _ px tys vals)
 
