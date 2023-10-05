@@ -32,19 +32,19 @@ sym refl = refl
 -- Next, let's define heterogeneous equality, making sure to make the
 -- homogeneous path between types explicit.
 
-data Heq {l} {A : Set l} : {B : Set l} → (A ≡ B) → A → B → Set l where
-   refl : {x : A} → Heq refl x x
+Heq : ∀ {l} {A : Set l} {B : Set l} → A ≡ B → A → B → Set
+Heq p x y = transp p x ≡ y
 
 -- Let's play with it a little, just to get a sense of how it compares to
 -- homogeneous equality, and equations like `transp p x ≡ y`
 
 heq-transp : ∀ {l₁} → {A B : Set l₁} → {x : A} → {y : B} → (pt : A ≡ B)
   → (px : Heq pt x y) → transp pt x ≡ y
-heq-transp refl refl = refl
+heq-transp pt p = p
 
 transp-heq : ∀ {l₁} → {A B : Set l₁} → (p : A ≡ B)
   → (x : A) → Heq p x (transp p x)
-transp-heq refl _ = refl
+transp-heq p _ = refl
 
 -- And define some combinators, that let us decompose cong operations into
 -- builtins that we might be able to implement.
